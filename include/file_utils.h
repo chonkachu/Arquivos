@@ -5,11 +5,6 @@
 
 typedef struct header_registry_ header_registry;
 typedef struct data_registry_ data_registry;
-typedef struct file_object_ file_object;
-file_object* create_file_object(char *file_name);
-int create_table(char *file_name, file_object *file_obj);
-data_registry** select_from(file_object *file_obj);
-data_registry** select_from_where(file_object *file_obj, char **field, char **values);
 
 struct header_registry_ {
     char status;
@@ -31,10 +26,5 @@ struct data_registry_ {
     char *nomeJogador;
     char *nacionalidade;
     char *nomeClube;
-};
-
-struct file_object_ {
-    FILE *file;
-    header_registry header;
 };
 #endif
