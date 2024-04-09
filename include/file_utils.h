@@ -5,5 +5,20 @@
 
 typedef struct header_registry_ header_registry;
 typedef struct data_registry_ data_registry;
-
+data_registry* criarRegistro();
+void liberarRegistro(data_registry** registro);
+int getTamNomeClube(data_registry* registro);
+int getTamNacionalidade(data_registry* registro);
+int getTamNomeJogador(data_registry* registro);
+void setId(data_registry* registro, int id);
+void setIdade(data_registry* registro, int idade);
+void setTamNomeJogador(data_registry* registro, int tam);
+void setNomeJogador(data_registry* registro, char* nomeJogador);
+void setTamNacionalidade(data_registry* registro, int tam);
+void setNacionalidade(data_registry* registro, char* nacionalidade);
+void setTamNomeClube(data_registry* registro, int tam);
+void setNomeClube(data_registry* registro, char* nomeClube);
+void setProx(data_registry* registro, int index);
+void setRemovido(data_registry* registro, int op);
+void setTamanhoRegistro(data_registry* registro, int tam);
 #endif

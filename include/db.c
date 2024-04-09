@@ -1,54 +1,51 @@
+#include <stdlib.h>
+#include <string.h>
 #include "db.h"
+#include "file_utils.h"
 
 int create_table(FILE *csv_file, FILE *bin_file){
-    data_registry *a=(data_registry*)malloc(sizeof(data_registry));
-
-    data_registry **table=(data_registry**)malloc(sizeof(data_registry*));
-
     while(1){
         char str[1024];
         int rotation=0;
+        data_registry* registro = criarRegistro();
         for(int i=0;;i++){
-            char a;
-            if(a=getc(csv_file)){
-                if(a==EOF){
-                    return 1; //nao era pra retornar table
-                }
-                if(a==',' || a=='\n'){
-                    str[i]='\0';
-                    break;
-                }else{
-                    str[i]=a;
-                }
+            char a = getc(csv_file);
+            if (a == EOF)
+                return 1;
+            if(a==',' || a=='\n'){
+                str[i]='\0';
+                break;
             }
+            else
+                str[i]=a;
         }
         if(rotation==0){
             if(str[0]=='\0'){
-                setId(a, -1) = -1;
+                setId(registro, -1);
             }else{
-                setId(a, atoi(str));
+                setId(registro, atoi(str));
             }
         }else if(rotation==1){
             if(str[0]=='\0'){
-               setIdade(a, -1);
+               setIdade(registro, -1);
             }else{
-               setIdade(a, atoi(str));
+               setIdade(registro, atoi(str));
             }
         }else if(rotation==2){
-            setTamNomeJogador(a, strlen(str));
+            setTamNomeJogador(registro, strlen(str));
             if(str[0]!='\0'){
-                setNomeJogador(a, str);  
+                setNomeJogador(registro, str);  
             }
 
         }else if(rotation==3){
-            setTamNacionalidade(a, strlen(str)) = strlen(str);
+            setTamNacionalidade(registro, strlen(str));
             if(str[0]!='\0'){
-                setNacionalidade(a, str);
+                setNacionalidade(registro, str);
             }
         }else{
-             setTamNomeClube(a, strlen(str));
+             setTamNomeClube(registro, strlen(str));
             if(str[0]!='\0'){
-                setNomeClube(a, str);
+                setNomeClube(registro, str);
             }
         }
 
@@ -56,23 +53,18 @@ int create_table(FILE *csv_file, FILE *bin_file){
 
         if(rotation==5){
              rotation = 0;
-             setProx(a, -1);
-             setRemovido(a, 0);
-             setTamanhoRegistro(a, 33 + getTamNomeClube(a) + getTamNacionalidade(a) + getTamNomeJogador(a));
-            
-            // maloca nova posiçao no vetor d eponteiro e mete o ponteiro pra a
-
-            
-             a=(data_registry*)malloc(sizeof(data_registry));
+             setProx(registro, -1);
+             setRemovido(registro, 0);
+             setTamanhoRegistro(registro, 33 + getTamNomeClube(registro)
+                                + getTamNacionalidade(registro) + getTamNomeJogador(registro));
+             liberarRegistro(&registro);
         }
     }
 }
 
 player_data** select_from(FILE *bin_file){
-
 }
 
 player_data** select_from_where(FILE *bin_file, int id, int idade, 
                                 char *nacionalidade, char *nomeClube, char *nomeJogador){
-
 }
