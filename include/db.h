@@ -2,7 +2,7 @@
 #define DB_H
 #include "file_utils.h"
 typedef struct player_data_ player_data;
-int create_table(FILE *csv_file, FILE *bin_file);
+int create_table(char* csv_name, char* bin_name);
 player_data** select_from(FILE *bin_file);
 player_data** select_from_where(FILE *bin_file, int id, int idade, 
                                 char *nacionalidade, char *nomeClube, char *nomeJogador);

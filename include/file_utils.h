@@ -5,7 +5,11 @@
 
 typedef struct header_registry_ header_registry;
 typedef struct data_registry_ data_registry;
+typedef struct file_object_ file_object;
+
+file_object* abrirArquivoBin(char* bin_name);
 data_registry* criarRegistro();
+void writeRegistroDados(file_object* fileObj, data_registry* registro);
 void liberarRegistro(data_registry** registro);
 int getTamNomeClube(data_registry* registro);
 int getTamNacionalidade(data_registry* registro);

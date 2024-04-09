@@ -12,9 +12,7 @@ int main() {
 
     if (op == 1) {
         scanf(" %s %s", csv_name, bin_name);
-        FILE *csv = fopen(csv_name, "r");
-        FILE *bin = fopen(bin_name, "wb");
-        create_table(csv, bin);
+        create_table(csv_name, bin_name);
     }
     else if (op == 2) {
         scanf("%s", bin_name);

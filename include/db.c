@@ -3,7 +3,9 @@
 #include "db.h"
 #include "file_utils.h"
 
-int create_table(FILE *csv_file, FILE *bin_file){
+int create_table(char* csv_name, char* bin_name){
+    FILE* csv_file = fopen(csv_name, "r");
+    file_object* fileObj = abrirArquivoBin(bin_name);
     while(1){
         char str[1024];
         int rotation=0;
@@ -57,6 +59,7 @@ int create_table(FILE *csv_file, FILE *bin_file){
              setRemovido(registro, 0);
              setTamanhoRegistro(registro, 33 + getTamNomeClube(registro)
                                 + getTamNacionalidade(registro) + getTamNomeJogador(registro));
+             writeRegistroDados(fileObj, registro);
              liberarRegistro(&registro);
         }
     }
