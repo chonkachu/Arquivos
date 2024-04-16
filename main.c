@@ -13,6 +13,7 @@ int main() {
     if (op == 1) {
         scanf(" %s %s", csv_name, bin_name);
         create_table(csv_name, bin_name);
+        
     }
     else if (op == 2) {
         scanf("%s", bin_name);

@@ -2,3 +2,6 @@ compile_commands.json
 *.o
 .cache
 main
+*.in
+*.csv
+*.bin
