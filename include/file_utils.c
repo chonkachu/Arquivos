@@ -39,13 +39,15 @@ file_object* abrirArquivoBin(char *bin_name){
     fileObj->header = header;
     fileObj->file = bin;
     fileObj->fileIndex = 0;
-    fseek(fileObj->file, 45, SEEK_SET);
     
     return fileObj;
 }
 
 data_registry* criarRegistro() {
     data_registry *registro = (data_registry*) malloc(sizeof(data_registry));
+    registro->nacionalidade = NULL;
+    registro->nomeClube = NULL;
+    registro->nomeJogador = NULL;
 
     return registro;
 }
@@ -57,11 +59,14 @@ void writeRegistroDados(file_object* fileObj, data_registry* registro) {
     fwrite(&registro->id, 4, 1, fileObj->file);
     fwrite(&registro->idade, 4, 1, fileObj->file);
     fwrite(&registro->tamNomeJog, 4, 1, fileObj->file);
-    fwrite(registro->nomeJogador, 1, registro->tamNomeJog, fileObj->file);
+    if (registro->nomeJogador != NULL)
+        fwrite(registro->nomeJogador, 1, registro->tamNomeJog, fileObj->file);
     fwrite(&registro->tamNacionalidade, 4, 1, fileObj->file);
-    fwrite(registro->nacionalidade, 1, registro->tamNacionalidade, fileObj->file);
+    if (registro->nacionalidade != NULL)
+        fwrite(registro->nacionalidade, 1, registro->tamNacionalidade, fileObj->file);
     fwrite(&registro->tamNomeClube, 4, 1, fileObj->file);
-    fwrite(registro->nomeClube, 1, registro->tamNomeClube, fileObj->file);
+    if (registro->nomeClube != NULL)
+        fwrite(registro->nomeClube, 1, registro->tamNomeClube, fileObj->file);
 }
 void writeRegistroCabecalho(file_object* fileObj) {
     fseek(fileObj->file, 0, SEEK_SET);
@@ -74,9 +79,12 @@ void writeRegistroCabecalho(file_object* fileObj) {
 }
 
 void liberarRegistro(data_registry **registro) {
-    free((*registro)->nomeJogador);
-    free((*registro)->nacionalidade);
-    free((*registro)->nomeClube);
+    if ((*registro)->nomeJogador != NULL)
+        free((*registro)->nomeJogador);
+    if ((*registro)->nacionalidade != NULL)
+        free((*registro)->nacionalidade);
+    if ((*registro)->nomeClube != NULL)
+        free((*registro)->nomeClube);
     free(*registro);
     *registro = NULL;
 }
@@ -86,6 +94,16 @@ void fecharArquivoBin(file_object** fileObj) {
     free((*fileObj)->header);
     free(*fileObj);
     *fileObj = NULL;
+}
+
+int getTamNacionalidade(data_registry *registro) {
+    return registro->tamNacionalidade;
+}
+int getTamNomeClube(data_registry *registro) {
+    return registro->tamNomeClube;
+}
+int getTamNomeJogador(data_registry *registro) {
+    return registro->tamNomeJog;
 }
 
 void setId(data_registry* registro, int id){
@@ -100,7 +118,8 @@ void setTamNomeJogador(data_registry* registro, int tam){
     registro->tamNomeJog = tam;
 }
 void setNomeJogador(data_registry* registro, char* nomeJogador){
-    free(registro->nomeJogador);
+    if (registro->nomeJogador != NULL)
+        free(registro->nomeJogador);
     registro->nomeJogador = nomeJogador;
 }
 
@@ -108,7 +127,8 @@ void setTamNacionalidade(data_registry* registro, int tam){
     registro->tamNacionalidade = tam;
 }
 void setNacionalidade(data_registry* registro, char* nacionalidade){
-    free(registro->nacionalidade);
+    if (registro->nacionalidade != NULL)
+        free(registro->nacionalidade);
     registro->nacionalidade = nacionalidade;
 }
 
@@ -117,7 +137,8 @@ void setTamNomeClube(data_registry* registro, int tam){
 }
 
 void setNomeClube(data_registry* registro, char* nomeClube){
-    free(registro->nomeClube);
+    if (registro->nomeClube != NULL)
+        free(registro->nomeClube);
     registro->nomeClube = nomeClube;
 }
 

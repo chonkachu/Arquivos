@@ -1,10 +1,12 @@
 #include <stdlib.h>
+#include <assert.h>
 #include <string.h>
 #include "db.h"
 #include "file_utils.h"
 
 int create_table(char* csv_name, char* bin_name){
     FILE* csv_file = fopen(csv_name, "r");
+    fseek(csv_file, 45, SEEK_SET); // desconsidera a primeira linha do csv
     file_object* fileObj = abrirArquivoBin(bin_name);
     setHeaderStatus(fileObj, 0);
     setHeaderTopo(fileObj, 0);
@@ -14,12 +16,14 @@ int create_table(char* csv_name, char* bin_name){
     writeRegistroCabecalho(fileObj);
 
     int cnt = 0;
+    int rotation = 0;
+    data_registry* registro;
     while(1){
-        int reachedEOF=0;
-        char* str=(char *)malloc(50*sizeof(char));
-        int rotation=0;
-        data_registry* registro = criarRegistro();
-        for(int i=0;;i++){
+        int reachedEOF = 0;
+        char* str = (char *) malloc(50*sizeof(char));
+        if (rotation == 0)
+            registro = criarRegistro();
+        for(int i = 0;;i++){
             char a = getc(csv_file);
             if (a == EOF){
                 reachedEOF=1;
@@ -34,6 +38,8 @@ int create_table(char* csv_name, char* bin_name){
             }
         }
 
+        int len = strlen(str);
+
         if(reachedEOF){
             free(str);
             liberarRegistro(&registro);
@@ -43,37 +49,52 @@ int create_table(char* csv_name, char* bin_name){
         if(rotation==0){
             if(str[0]=='\0'){
                 setId(registro, -1);
-            }else{
+            }
+            else{
+                //printf("%s\n", str);
                 setId(registro, atoi(str));
-            }
-        }else if(rotation==1){
-            if(str[0]=='\0'){
-               setIdade(registro, -1);
-            }else{
-               setIdade(registro, atoi(str));
-            }
-        }else if(rotation==2){
-            setTamNomeJogador(registro, strlen(str));
-            if(str[0]!='\0'){
-                setNomeJogador(registro, str);  
-            }
-
-        }else if(rotation==3){
-            setTamNacionalidade(registro, strlen(str));
-            if(str[0]!='\0'){
-                setNacionalidade(registro, str);
-            }
-        }else{
-            setTamNomeClube(registro, strlen(str));
-            if(str[0]!='\0'){
-                setNomeClube(registro, str);
+                free(str);
             }
         }
-
-        rotation++;
-
-        if(rotation==5){
-            rotation = 0;
+        else if(rotation==1){
+            if(str[0]=='\0'){
+                setIdade(registro, -1);
+            }
+            else{
+                //printf("%s\n", str);
+                setIdade(registro, atoi(str));
+                free(str);
+            }
+        }
+        else if(rotation==2){
+            setTamNomeJogador(registro, len);
+            if(str[0]!='\0'){
+                //printf("%s\n", str);
+                setNomeJogador(registro, str);  
+            }
+            else {
+                free(str);
+            }
+        }
+        else if(rotation==3){
+            setTamNacionalidade(registro, len);
+            if(str[0]!='\0'){
+                //printf("%s\n", str);
+                setNacionalidade(registro, str);
+            }
+            else {
+                free(str);
+            }
+        }
+        else{
+            setTamNomeClube(registro, len);
+            if(str[0]!='\0'){
+                //printf("%s\n", str);
+                setNomeClube(registro, str);
+            }
+            else {
+                free(str);
+            }
             setProx(registro, -1);
             setRemovido(registro, 0);
             setTamanhoRegistro(registro, 33 + getTamNomeClube(registro)
@@ -81,11 +102,16 @@ int create_table(char* csv_name, char* bin_name){
             writeRegistroDados(fileObj, registro);
             liberarRegistro(&registro);
             cnt++;
+            rotation = 0;
+            continue;
         }
+        rotation++;
     }
     setHeaderStatus(fileObj, 1);
     setHeaderNroRegArq(fileObj, cnt);
     writeRegistroCabecalho(fileObj);
+    fecharArquivoBin(&fileObj);
+    fclose(csv_file);
 
     binarioNaTela(bin_name);
     return 1;

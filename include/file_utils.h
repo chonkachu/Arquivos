@@ -8,6 +8,7 @@ typedef struct data_registry_ data_registry;
 typedef struct file_object_ file_object;
 
 file_object* abrirArquivoBin(char* bin_name);
+void fecharArquivoBin(file_object** fileObj);
 data_registry* criarRegistro();
 void writeRegistroDados(file_object* fileObj, data_registry* registro);
 void liberarRegistro(data_registry** registro);

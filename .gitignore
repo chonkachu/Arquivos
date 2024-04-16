@@ -5,3 +5,5 @@ main
 *.in
 *.csv
 *.bin
+*.zip
+teste/*
