@@ -92,12 +92,12 @@ void setNomeClube(data_registry* registro, char* nomeClube){
     registro->nomeClube = nomeClube;
 }
 
-void setProx(){
-
+void setProx(data_registry* registro, int index){
+    registro->prox = index;
 }
 
-void setRemovido(){
-
+void setRemovido(data_registry* registro, int op){
+    registro->removido = op; 
 }
 
 void setTamanhoRegistro(data_registry* registro, int tam){

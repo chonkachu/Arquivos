@@ -7,13 +7,15 @@ int create_table(char* csv_name, char* bin_name){
     FILE* csv_file = fopen(csv_name, "r");
     file_object* fileObj = abrirArquivoBin(bin_name);
     while(1){
-        char str[1024];
+        int reachedEOF=0;
+        char* str=(char *)malloc(50*sizeof(char));
         int rotation=0;
         data_registry* registro = criarRegistro();
         for(int i=0;;i++){
             char a = getc(csv_file);
             if (a == EOF)
-                return 1;
+                reachedEOF=1;
+                break;
             if(a==',' || a=='\n'){
                 str[i]='\0';
                 break;
@@ -21,6 +23,7 @@ int create_table(char* csv_name, char* bin_name){
             else
                 str[i]=a;
         }
+
         if(rotation==0){
             if(str[0]=='\0'){
                 setId(registro, -1);
@@ -61,6 +64,10 @@ int create_table(char* csv_name, char* bin_name){
                                 + getTamNacionalidade(registro) + getTamNomeJogador(registro));
              writeRegistroDados(fileObj, registro);
              liberarRegistro(&registro);
+        }
+
+         if(reachedEOF){
+            break;
         }
     }
 }
