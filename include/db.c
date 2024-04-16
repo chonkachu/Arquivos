@@ -6,6 +6,7 @@
 int create_table(char* csv_name, char* bin_name){
     FILE* csv_file = fopen(csv_name, "r");
     file_object* fileObj = abrirArquivoBin(bin_name);
+
     while(1){
         int reachedEOF=0;
         char* str=(char *)malloc(50*sizeof(char));
@@ -13,15 +14,17 @@ int create_table(char* csv_name, char* bin_name){
         data_registry* registro = criarRegistro();
         for(int i=0;;i++){
             char a = getc(csv_file);
-            if (a == EOF)
+            if (a == EOF){
                 reachedEOF=1;
                 break;
+            }
             if(a==',' || a=='\n'){
                 str[i]='\0';
                 break;
             }
-            else
+            else{
                 str[i]=a;
+            }
         }
 
         if(rotation==0){

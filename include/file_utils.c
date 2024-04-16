@@ -36,6 +36,7 @@ file_object* abrirArquivoBin(char *bin_name){
     fileObj->header = header;
     fileObj->file = bin;
     fileObj->fileIndex = 0;
+    
     return fileObj;
 }
 // supondo que o indice do arquivo ta onde a gnt precisa
@@ -102,4 +103,20 @@ void setRemovido(data_registry* registro, int op){
 
 void setTamanhoRegistro(data_registry* registro, int tam){
     registro->tamanhoRegistro = tam;
+}
+
+void setHeaderStatus(header_registry* cabecalho, char status){
+    cabecalho->status = status;
+}
+void setHeaderTopo(header_registry* cabecalho, int64_t topo){
+    cabecalho->topo = topo;
+}
+void setHeaderProxByteOfffset(header_registry* cabecalho, int64_t proxByteOffset){
+    cabecalho->proxByteOffset = proxByteOffset;
+}
+void setHeaderNroRegArq(header_registry* cabecalho, int32_t nroRegArq){
+    cabecalho->nroRegArq = nroRegArq;
+}
+void setHeaderNroRegRem(header_registry* cabecalho, int32_t nroRegRem){
+    cabecalho->nroRegRem = nroRegRem;
 }

@@ -25,4 +25,10 @@ void setNomeClube(data_registry* registro, char* nomeClube);
 void setProx(data_registry* registro, int index);
 void setRemovido(data_registry* registro, int op);
 void setTamanhoRegistro(data_registry* registro, int tam);
+void setHeaderStatus(header_registry* cabecalho, char status);
+void setHeaderTopo(header_registry* cabecalho, int64_t topo);
+void setHeaderProxByteOfffset(header_registry* cabecalho, int64_t proxByteOffset);
+void setHeaderNroRegArq(header_registry* cabecalho, int32_t nroRegArq);
+void setHeaderNroRegRem(header_registry* cabecalho, int32_t nroRegArq);
+
 #endif
