@@ -3,15 +3,10 @@
 #include "file_utils.h"
 typedef struct player_data_ player_data;
 int create_table(char* csv_name, char* bin_name);
-player_data** select_from(FILE *bin_file);
-player_data** select_from_where(FILE *bin_file, int id, int idade, 
+void select_from(char *bin_file);
+void select_from_where(FILE *bin_file, int id, int idade, 
                                 char *nacionalidade, char *nomeClube, char *nomeJogador);
-struct player_data_ {
-    int id;
-    int idade;
-    char *nomeJogador;
-    char *nacionalidade;
-    char *nomeClube;
-};
+
+void imprimePlayerData(player_data *player);
 
 #endif

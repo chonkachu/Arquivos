@@ -7,7 +7,8 @@ typedef struct header_registry_ header_registry;
 typedef struct data_registry_ data_registry;
 typedef struct file_object_ file_object;
 
-file_object* abrirArquivoBin(char* bin_name);
+//file_object* abrirArquivoBin(char* bin_name);
+file_object* criarArquivoBin(char *bin_name);
 void fecharArquivoBin(file_object** fileObj);
 data_registry* criarRegistro();
 void writeRegistroDados(file_object* fileObj, data_registry* registro);
@@ -29,7 +30,7 @@ void setTamanhoRegistro(data_registry* registro, int tam);
 void writeRegistroCabecalho(file_object* fileObj);
 void setHeaderStatus(file_object* fileObj, char status);
 void setHeaderTopo(file_object* fileObj, int64_t topo);
-void setHeaderProxByteOfffset(file_object* fileObj, int64_t proxByteOffset);
+void setHeaderProxByteOffset(file_object* fileObj, int64_t proxByteOffset);
 void setHeaderNroRegArq(file_object* fileObj, int32_t nroRegArq);
 void setHeaderNroRegRem(file_object* fileObj, int32_t nroRegRem);
 void binarioNaTela(char *nomeArquivoBinario);

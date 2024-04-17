@@ -17,13 +17,8 @@ int main() {
     }
     else if (op == 2) {
         scanf("%s", bin_name);
-        FILE *bin = fopen(bin_name, "rb");
 
-        if (bin == NULL) {
-            printf("Falha ao processar o arquivo\n");
-        }
-
-        select_from(bin);
+        select_from(bin_name);
     }
     else if (op == 3) {
         scanf("%s %d", bin_name, &num_queries);

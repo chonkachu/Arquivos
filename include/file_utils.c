@@ -32,7 +32,24 @@ struct file_object_ {
     int32_t fileIndex;
 };
 
-file_object* abrirArquivoBin(char *bin_name){
+// file_object* abrirArquivoBin(char *bin_name){
+//     file_object *fileObj = (file_object*) malloc(sizeof(file_object));
+//     header_registry *header = (header_registry*) malloc(sizeof(header_registry));
+//     FILE* bin = fopen(bin_name, "rb");
+//     fileObj->header = header;
+//     fread(&fileObj->header->status, 1, 1, fileObj->file);
+//     fread(&fileObj->header->topo, 8, 1, fileObj->file);
+//     fread(&fileObj->header->proxByteOffset, 8, 1, fileObj->file);
+//     fread(&fileObj->header->nroRegArq, 4, 1, fileObj->file);
+//     fread(&fileObj->header->nroRegRem, 4, 1, fileObj->file);
+//     fseek(&fileObj->file, 0, SEEK_SET);
+//     fileObj->file = bin;
+//     fileObj->fileIndex = 0;
+    
+//     return fileObj;
+// }
+
+file_object* criarArquivoBin(char *bin_name){
     file_object *fileObj = (file_object*) malloc(sizeof(file_object));
     header_registry *header = (header_registry*) malloc(sizeof(header_registry));
     FILE* bin = fopen(bin_name, "wb+");
@@ -160,7 +177,7 @@ void setHeaderStatus(file_object* fileObj, char status){
 void setHeaderTopo(file_object* fileObj, int64_t topo){
     fileObj->header->topo = topo;
 }
-void setHeaderProxByteOfffset(file_object* fileObj, int64_t proxByteOffset){
+void setHeaderProxByteOffset(file_object* fileObj, int64_t proxByteOffset){
     fileObj->header->proxByteOffset = proxByteOffset;
 }
 void setHeaderNroRegArq(file_object* fileObj, int32_t nroRegArq){
