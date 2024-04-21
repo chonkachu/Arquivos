@@ -10,6 +10,14 @@ struct player_data_ {
     char *nomeClube;
 };
 
+struct parametrosDeBusca_{
+    int id;
+    int idade;
+    char nacionalidade[50];
+    char nome[50];
+    char clube[50];
+};
+
 int create_table(char* csv_name, char* bin_name){
     FILE* csv_file = fopen(csv_name, "r");
     fseek(csv_file, 45, SEEK_SET); // desconsidera a primeira linha do csv
@@ -185,9 +193,168 @@ void select_from(char* bin_name){
     fclose(bin);
 }
 
-void select_from_where(FILE *bin_file, int id, int idade, 
-                                char *nacionalidade, char *nomeClube, char *nomeJogador){
-    return;
+void select_from_where(char *bin_name, int num_queries){
+        parametrosDeBusca parametros[1024];
+        int num_fields;
+        char field_name[20];
+
+        int it=num_queries;
+        for(int i=0;i<num_queries;i++){
+            parametros[i].id=-1;
+            parametros[i].idade=-1;
+            parametros[i].nacionalidade[0]='\0';
+            parametros[i].clube[0]='\0';
+            parametros[i].nome[0]='\0';
+
+            scanf("%d", &num_fields); 
+            for (int j = 0; j < num_fields; j++) {
+                scanf("%s", field_name);
+                if (strcmp(field_name, "id") == 0) {
+                    scanf("%d", &parametros[i].id);
+                }
+                else if (strcmp(field_name, "idade") == 0) {
+                    scanf("%d", &parametros[i].idade);
+                }
+                else if (strcmp(field_name, "nacionalidade") == 0) {
+                    scan_quote_string(parametros[i].nacionalidade);
+                }
+                else if (strcmp(field_name, "nomeJogador") == 0) {
+                    scan_quote_string(parametros[i].nome);
+                }
+                else if (strcmp(field_name, "nomeClube") == 0) {
+                     scan_quote_string(parametros[i].clube);
+                }
+            }
+        }
+
+        for(int i=0;i<num_queries;i++){
+            FILE *bin = fopen(bin_name, "rb");
+
+            if(bin==NULL){
+                printf("Falha ao carrsegar aquivo");
+                return;
+            }
+
+            int idBuscado=parametros[i].id;
+            int idadeBuscada=parametros[i].idade;
+            char* nacionalidadeBuscada=parametros[i].nacionalidade;
+            char* nomeBuscado=parametros[i].nome;
+            char* clubeBuscado=parametros[i].clube;
+
+            fseek(bin, 25, SEEK_SET);
+
+            player_data* player = (player_data*) malloc(sizeof(player_data));
+                player->nomeJogador = NULL;
+                player->nacionalidade = NULL;
+                player->nomeClube = NULL;
+                
+            while(1){
+                char a = getc(bin);
+                if (a == EOF)
+                    break;
+                if(a=='1'){
+                    int tamReg=0;
+                    fread(&tamReg, 4, 1, bin);
+                    fseek(bin, tamReg, SEEK_CUR);
+                    continue;
+                }
+
+                fseek(bin, 12, SEEK_CUR); // skippa tamreg e prox
+
+                int id=-1;
+                int idade=-1;
+
+                fread(&id, 4, 1, bin);
+                fread(&idade, 4, 1, bin);
+
+                int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0;
+                fread(&tamNomeJog, 4, 1, bin);
+                
+                if (tamNomeJog != 0) {
+                    player->nomeJogador = (char*) malloc((tamNomeJog+1)*sizeof(char));
+                    fread(player->nomeJogador, 1, tamNomeJog, bin);
+                    player->nomeJogador[tamNomeJog] = '\0';
+                }
+
+                fread(&tamNacionalidade, 4, 1, bin);
+                if (tamNacionalidade != 0){
+                    player->nacionalidade = (char*) malloc((tamNacionalidade+1)*sizeof(char));
+                    fread(player->nacionalidade, 1, tamNacionalidade, bin);
+                    player->nacionalidade[tamNacionalidade] = '\0';
+
+                }
+                fread(&tamNomeClube, 4, 1, bin);
+                if (tamNomeClube != 0) {
+                    player->nomeClube = (char*) malloc((tamNomeClube+1)*sizeof(char));
+                    fread(player->nomeClube, 1, tamNomeClube, bin);
+                    player->nomeClube[tamNomeClube] = '\0';
+
+                }
+
+                
+                int contadorDeFit=0;
+                int neededFit=0;
+                if(idadeBuscada!=-1){
+                    if(idadeBuscada==idade){
+                        contadorDeFit++;
+                    }
+                    neededFit++;
+                }
+                if(idBuscado!=-1){
+                    if(idBuscado==id){
+                        contadorDeFit++;
+                    }
+                    neededFit++;
+                }
+                if(strlen(nacionalidadeBuscada)>0){
+                    if(strcmp(nacionalidadeBuscada, player->nacionalidade)){
+                        contadorDeFit++;
+                    }
+                    neededFit++;
+                }
+                if(strlen(nomeBuscado)>0){
+                    if(strcmp(nomeBuscado, player->nomeJogador)){
+                        contadorDeFit++;
+                    }
+                    neededFit++;
+                }
+                if(strlen(clubeBuscado)>0){
+                    if(strcmp(clubeBuscado, player->nomeClube)){
+                        contadorDeFit++;
+                    }
+                    neededFit++;
+                }
+
+
+                if(neededFit==contadorDeFit){
+                    imprimePlayerData(player);
+                    if(idBuscado!=-1){
+                        if (player->nomeJogador != NULL)
+                         free(player->nomeJogador);
+                        if (player->nacionalidade != NULL)
+                         free(player->nacionalidade);
+                            if (player->nomeClube != NULL)
+                                free(player->nomeClube);
+                            player->nomeJogador = NULL;
+                            player->nacionalidade = NULL;
+                            player->nomeClube = NULL;
+                            break;
+                    }
+                }
+                if (player->nomeJogador != NULL)
+                    free(player->nomeJogador);
+                if (player->nacionalidade != NULL)
+                    free(player->nacionalidade);
+               if (player->nomeClube != NULL)
+                   free(player->nomeClube);
+                player->nomeJogador = NULL;
+                player->nacionalidade = NULL;
+                player->nomeClube = NULL;
+                
+            }
+            free(player);
+            fclose(bin);
+        }
 }
 
 void imprimePlayerData(player_data *player){

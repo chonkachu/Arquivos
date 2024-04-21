@@ -34,4 +34,5 @@ void setHeaderProxByteOffset(file_object* fileObj, int64_t proxByteOffset);
 void setHeaderNroRegArq(file_object* fileObj, int32_t nroRegArq);
 void setHeaderNroRegRem(file_object* fileObj, int32_t nroRegRem);
 void binarioNaTela(char *nomeArquivoBinario);
+void scan_quote_string(char *str);
 #endif
