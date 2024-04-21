@@ -4,24 +4,24 @@
 #include "db.h"
 #include "file_utils.h"
 
-struct player_data_ {
-    char *nomeJogador;
-    char *nacionalidade;
-    char *nomeClube;
+struct player_data_ {           // estrutura para auxiliar na impressão do jogador
+    char *nomeJogador;            // armazena o nome do jogador caso ou caso tenha
+    char *nacionalidade;            // armazena a nacionalidade 
+    char *nomeClube;            // armazena nome do clube
 };
 
-struct parametrosDeBusca_{
-    int id;
-    int idade;
-    char nacionalidade[50];
-    char nome[50];
-    char clube[50];
+struct parametrosDeBusca_{            // estrututura que armazenos os parametros buscado em cada busca
+    int id;            // armazena o id buscado
+    int idade;            // armazena a idade buscada
+    char nacionalidade[50];            // armazena a nacionalidade buscada
+    char nome[50];            // armazena o nome buscado
+    char clube[50];            // armazena o nome 
 };
 
-int create_table(char* csv_name, char* bin_name){
-    FILE* csv_file = fopen(csv_name, "r");
-    fseek(csv_file, 45, SEEK_SET); // desconsidera a primeira linha do csv
-    file_object* fileObj = criarArquivoBin(bin_name);
+int create_table(char* csv_name, char* bin_name){            // funçao que transforma o arquivo csv em binario (operação 1)
+    FILE* csv_file = fopen(csv_name, "r");            // abre o arquivo csv
+    fseek(csv_file, 45, SEEK_SET);            // desconsidera a primeira linha do csv
+    file_object* fileObj = criarArquivoBin(bin_name);            // cria o arquivo bin
     setHeaderStatus(fileObj, '0');
     setHeaderTopo(fileObj, -1);
     setHeaderProxByteOffset(fileObj, 0);
@@ -29,17 +29,17 @@ int create_table(char* csv_name, char* bin_name){
     setHeaderNroRegRem(fileObj, 0);
     writeRegistroCabecalho(fileObj);
 
-    int cnt = 0;
-    int rotation = 0;
-    int byteOff = 25;
-    data_registry* registro;
+    int cnt = 0;            // conta a quantidade de registros
+    int rotation = 0;            // variavel auxiliar para sabermos qual campo estamos lendo agora ou se o jogar foi completamente lido
+    int byteOff = 25;   
+    data_registry* registro;            // montamos registro para escrever certinho no arquivo binario
     while(1){
-        int reachedEOF = 0;
-        char* str = (char *) malloc(50*sizeof(char));
+        int reachedEOF = 0;            // variavel para saber se chegamos em EOF
+        char* str = (char *) malloc(50*sizeof(char));            //string para ler o campo  
         if (rotation == 0)
             registro = criarRegistro();
         for(int i = 0;;i++){
-            char a = getc(csv_file);
+            char a = getc(csv_file);            // lemos caracter por caracter
             if (a == EOF){
                 reachedEOF=1;
                 break;
@@ -53,7 +53,7 @@ int create_table(char* csv_name, char* bin_name){
             }
         }
 
-        int len = strlen(str);
+        int len = strlen(str);            //tamanho do campo para utilizar nos campos de tamanho variavel
 
         if(reachedEOF){
             free(str);
@@ -66,7 +66,6 @@ int create_table(char* csv_name, char* bin_name){
                 setId(registro, -1);
             }
             else{
-                //printf("%s\n", str);
                 setId(registro, atoi(str));
                 free(str);
             }
@@ -76,7 +75,6 @@ int create_table(char* csv_name, char* bin_name){
                 setIdade(registro, -1);
             }
             else{
-                //printf("%s\n", str);
                 setIdade(registro, atoi(str));
                 free(str);
             }
@@ -84,7 +82,6 @@ int create_table(char* csv_name, char* bin_name){
         else if(rotation==2){
             setTamNomeJogador(registro, len);
             if(str[0]!='\0'){
-                //printf("%s\n", str);
                 setNomeJogador(registro, str);  
             }
             else {
@@ -94,7 +91,6 @@ int create_table(char* csv_name, char* bin_name){
         else if(rotation==3){
             setTamNacionalidade(registro, len);
             if(str[0]!='\0'){
-                //printf("%s\n", str);
                 setNacionalidade(registro, str);
             }
             else {
@@ -104,7 +100,6 @@ int create_table(char* csv_name, char* bin_name){
         else{
             setTamNomeClube(registro, len);
             if(str[0]!='\0'){
-                //printf("%s\n", str);
                 setNomeClube(registro, str);
             }
             else {
@@ -112,8 +107,8 @@ int create_table(char* csv_name, char* bin_name){
             }
             setProx(registro, -1);
             setRemovido(registro, '0');
-	    int tamReg = 33 + getTamNomeClube(registro)
-                    + getTamNacionalidade(registro) + getTamNomeJogador(registro);
+        // variavel que armazena o tamanho do registro 33 fio + os campos de tamanho variavel
+	    int tamReg = 33 + getTamNomeClube(registro) + getTamNacionalidade(registro) + getTamNomeJogador(registro);
 	    byteOff += tamReg;
             setTamanhoRegistro(registro, tamReg);
             writeRegistroDados(fileObj, registro);
@@ -135,27 +130,33 @@ int create_table(char* csv_name, char* bin_name){
     return 1;
 }
 
-void select_from(char* bin_name){
-    FILE *bin = fopen(bin_name, "rb");
+void select_from(char* bin_name){            // função que imprime os registros do arquivo binario na forma pedida (operação 2)
+    FILE *bin = fopen(bin_name, "rb");             // abre o arquivo binario
 
     if(bin==NULL){
         return;
     }
 
-    fseek(bin, 25, SEEK_SET);
+    fseek(bin, 25, SEEK_SET);            
 
-    player_data* player = (player_data*) malloc(sizeof(player_data));
+    player_data* player = (player_data*) malloc(sizeof(player_data));            // auxilia na modularizaçao para imprimir cada jogador 
         player->nomeJogador = NULL;
         player->nacionalidade = NULL;
         player->nomeClube = NULL;
     while(1){
-        char a = getc(bin);
+        char a = getc(bin);        // necessario para verificar se chegamos em EOF    
         if (a == EOF)
             break;
-        fseek(bin, 20, SEEK_CUR);
-        int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0;
+        if(a=='1'){
+            int tamReg=0;        // o registro esta logicamente removido portanto vamos pular o registro inteiro
+            fread(&tamReg, 4, 1, bin);
+            fseek(bin, tamReg, SEEK_CUR);
+            continue;
+        }
+        fseek(bin, 20, SEEK_CUR);        // pulamos direto para os campos de tamanho variavel pois sao os que serão impressos
+        int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0;        // armazenaram respectivamente tamanho da string de nacionalidade, nome do jogador e nome do clube
         fread(&tamNomeJog, 4, 1, bin);
-        //printf("%d\n", tamNomeJog);
+        
         if (tamNomeJog != 0) {
             player->nomeJogador = (char*) malloc((tamNomeJog+1)*sizeof(char));
             fread(player->nomeJogador, 1, tamNomeJog, bin);
@@ -163,7 +164,7 @@ void select_from(char* bin_name){
         }
             
         fread(&tamNacionalidade, 4, 1, bin);
-        //printf("%d\n", tamNacionalidade);
+        
         if (tamNacionalidade != 0){
             player->nacionalidade = (char*) malloc((tamNacionalidade+1)*sizeof(char));
             fread(player->nacionalidade, 1, tamNacionalidade, bin);
@@ -171,7 +172,7 @@ void select_from(char* bin_name){
 
         }
         fread(&tamNomeClube, 4, 1, bin);
-        //printf("%d\n", tamNomeClube);
+        
         if (tamNomeClube != 0) {
             player->nomeClube = (char*) malloc((tamNomeClube+1)*sizeof(char));
             fread(player->nomeClube, 1, tamNomeClube, bin);
@@ -193,12 +194,12 @@ void select_from(char* bin_name){
     fclose(bin);
 }
 
-void select_from_where(char *bin_name, int num_queries){
-        parametrosDeBusca parametros[1024];
-        int num_fields;
-        char field_name[20];
+void select_from_where(char *bin_name, int num_queries){        // função que imprime os registros especificos de cada busca do arquivo binario na forma pedida (operação 3)
+        parametrosDeBusca parametros[1024];        // vetor que ira armazenar as especificaçoes de cada busca para lermos primeiro a entrada e somente depois imprimir
+        int num_fields;        // quantidade de campos que sao requisitados na busca
+        char field_name[20];        // para ler o nome do campo
 
-        int it=num_queries;
+        int it=num_queries;        // auxiliar que recebe a quantidade de buscas
         for(int i=0;i<num_queries;i++){
             parametros[i].id=-1;
             parametros[i].idade=-1;
@@ -225,25 +226,29 @@ void select_from_where(char *bin_name, int num_queries){
                      scan_quote_string(parametros[i].clube);
                 }
             }
-        }
+        }           // Fim da computação na entrada
+
+        // inicio da operação
 
         for(int i=0;i<num_queries;i++){
             FILE *bin = fopen(bin_name, "rb");
 
             if(bin==NULL){
-                printf("Falha ao carrsegar aquivo");
+                printf("Falha ao carregar aquivo");
                 return;
             }
 
-            int idBuscado=parametros[i].id;
-            int idadeBuscada=parametros[i].idade;
-            char* nacionalidadeBuscada=parametros[i].nacionalidade;
-            char* nomeBuscado=parametros[i].nome;
-            char* clubeBuscado=parametros[i].clube;
+            printf("Busca %d\n\n", i+1);
+
+            int idBuscado=parametros[i].id;         // o id buscado
+            int idadeBuscada=parametros[i].idade;       // a idade buscada
+            char* nacionalidadeBuscada=parametros[i].nacionalidade;         // a nacionalidade
+            char* nomeBuscado=parametros[i].nome;         // nome
+            char* clubeBuscado=parametros[i].clube;         // clube
 
             fseek(bin, 25, SEEK_SET);
 
-            player_data* player = (player_data*) malloc(sizeof(player_data));
+            player_data* player = (player_data*) malloc(sizeof(player_data)); 
                 player->nomeJogador = NULL;
                 player->nacionalidade = NULL;
                 player->nomeClube = NULL;
@@ -261,13 +266,13 @@ void select_from_where(char *bin_name, int num_queries){
 
                 fseek(bin, 12, SEEK_CUR); // skippa tamreg e prox
 
-                int id=-1;
-                int idade=-1;
+                int id=-1;          // id lido do registro atual
+                int idade=-1;          // idade lida do registro atual
 
                 fread(&id, 4, 1, bin);
                 fread(&idade, 4, 1, bin);
 
-                int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0;
+                int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0;         // armazenaram respectivamente tamanho da string de nacionalidade, nome do jogador e nome do clube do registro atual
                 fread(&tamNomeJog, 4, 1, bin);
                 
                 if (tamNomeJog != 0) {
@@ -292,8 +297,8 @@ void select_from_where(char *bin_name, int num_queries){
                 }
 
                 
-                int contadorDeFit=0;
-                int neededFit=0;
+                int contadorDeFit=0;            // contador para saber se o registro possui todos os campos que estao sendo procurados
+                int neededFit=0;            // a quantidade de campos necessarias;
                 if(idadeBuscada!=-1){
                     if(idadeBuscada==idade){
                         contadorDeFit++;
@@ -328,7 +333,7 @@ void select_from_where(char *bin_name, int num_queries){
 
                 if(neededFit==contadorDeFit){
                     imprimePlayerData(player);
-                    if(idBuscado!=-1){
+                    if(idBuscado!=-1){          // como so há 1 id para cada se o jogador com o id foi encontrado fim-se
                         if (player->nomeJogador != NULL)
                          free(player->nomeJogador);
                         if (player->nacionalidade != NULL)
@@ -357,7 +362,7 @@ void select_from_where(char *bin_name, int num_queries){
         }
 }
 
-void imprimePlayerData(player_data *player){
+void imprimePlayerData(player_data *player){            // função que imprime a nacionalidade, nome e clube do jogador
     printf("Nome do Jogador: ");
     if(player->nomeJogador == NULL){
         printf("SEM DADO\n");
