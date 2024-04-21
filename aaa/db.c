@@ -134,7 +134,6 @@ void select_from(char* bin_name){            // função que imprime os registro
     FILE *bin = fopen(bin_name, "rb");             // abre o arquivo binario
 
     if(bin==NULL){
-        printf("Falha no processamento do arquivo.\n");
         return;
     }
 
@@ -148,11 +147,10 @@ void select_from(char* bin_name){            // função que imprime os registro
         char a = getc(bin);        // necessario para verificar se chegamos em EOF    
         if (a == EOF)
             break;
-            
         if(a=='1'){
             int tamReg=0;        // o registro esta logicamente removido portanto vamos pular o registro inteiro
             fread(&tamReg, 4, 1, bin);
-            fseek(bin, tamReg-5, SEEK_CUR);
+            fseek(bin, tamReg, SEEK_CUR);
             continue;
         }
         fseek(bin, 20, SEEK_CUR);        // pulamos direto para os campos de tamanho variavel pois sao os que serão impressos
@@ -201,7 +199,7 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
         int num_fields;        // quantidade de campos que sao requisitados na busca
         char field_name[20];        // para ler o nome do campo
 
-        // int it=num_queries;        // auxiliar que recebe a quantidade de buscas
+        int it=num_queries;        // auxiliar que recebe a quantidade de buscas
         for(int i=0;i<num_queries;i++){
             parametros[i].id=-1;
             parametros[i].idade=-1;
@@ -228,7 +226,7 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                      scan_quote_string(parametros[i].clube);
                 }
             }
-        }           // Fim da computação da entrada
+        }           // Fim da computação na entrada
 
         // inicio da operação
 
@@ -236,7 +234,7 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
             FILE *bin = fopen(bin_name, "rb");
 
             if(bin==NULL){
-                printf("Falha no processamento do arquivo.\n");
+                printf("Falha ao carregar aquivo");
                 return;
             }
 
@@ -262,7 +260,7 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                 if(a=='1'){
                     int tamReg=0;
                     fread(&tamReg, 4, 1, bin);
-                    fseek(bin, tamReg-5, SEEK_CUR);
+                    fseek(bin, tamReg, SEEK_CUR);
                     continue;
                 }
 
