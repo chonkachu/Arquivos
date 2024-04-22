@@ -64,6 +64,8 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
         if(rotation==0){
             if(str[0]=='\0'){
                 setId(registro, -1);
+                if(str!=NULL)
+                    free(str);
             }
             else{
                 setId(registro, atoi(str));
@@ -73,6 +75,8 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
         else if(rotation==1){
             if(str[0]=='\0'){
                 setIdade(registro, -1);
+                if(str!=NULL)
+                    free(str);
             }
             else{
                 setIdade(registro, atoi(str));
@@ -112,12 +116,15 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
 	    byteOff += tamReg;
             setTamanhoRegistro(registro, tamReg);
             writeRegistroDados(fileObj, registro);
+            
             liberarRegistro(&registro);
+            //free(str);
             cnt++;
             rotation = 0;
             continue;
         }
         rotation++;
+       // if(str!=NULL) free(str);
     }
     setHeaderStatus(fileObj, '1');
     setHeaderProxByteOffset(fileObj, byteOff);
@@ -144,7 +151,7 @@ void select_from(char* bin_name){            // função que imprime os registro
         player->nomeJogador = NULL;
         player->nacionalidade = NULL;
         player->nomeClube = NULL;
-    int EXIST=0;
+    int EXIST=0;            // variavel para auxiliar em caso de registro inexistente
     while(1){
         char a = getc(bin);        // necessario para verificar se chegamos em EOF    
         if (a == EOF)
@@ -239,8 +246,8 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
         // inicio da operação
 
         for(int i=0;i<num_queries;i++){             // LOOP DAS BUSCAS
-            int EXIST=0;
-            FILE *bin = fopen(bin_name, "rb");
+            int EXIST=0;            // variavel que auxilia em caso de registro inexistente
+            FILE *bin = fopen(bin_name, "rb");          // abre o arquivo binario
 
             if(bin==NULL){
                 printf("Falha no processamento do arquivo.\n");
@@ -263,7 +270,7 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                 player->nomeClube = NULL;
                 
             while(1){           // COMEÇAMOS A LER O ARQUIVO BINARIO
-                char a = getc(bin);
+                char a = getc(bin);         // auxilia para saber se chegamos em EOF ou se foi logicamente removido
                 if (a == EOF)
                     break;
                 if(a=='1'){
@@ -309,14 +316,12 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                 int contadorDeFit=0;            // contador para saber se o registro possui todos os campos que estao sendo procurados
                 int neededFit=0;            // a quantidade de campos necessarias;
                 if(idadeBuscada!=-1){
-                  //  printf("idade buscada eh %d\n", idadeBuscada);
                     if(idadeBuscada==idade){
                         contadorDeFit++;
                     }
                     neededFit++;
                 }
                 if(idBuscado!=-1){
-                  
                     if(idBuscado==id){
                         contadorDeFit++;
                     }

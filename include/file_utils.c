@@ -5,11 +5,11 @@
 #include "file_utils.h"
 
 struct header_registry_ {
-    char status;
-    int64_t topo;
-    int64_t proxByteOffset;
-    int32_t nroRegArq;
-    int32_t nroRegRem;
+    char status;        // status do arquivo para saber se ele esta consistente
+    int64_t topo;           // byteOff do ultimo registro removido
+    int64_t proxByteOffset;         // primeiro byte depois do fim dos registros
+    int32_t nroRegArq;          // a quantidade de registros
+    int32_t nroRegRem;          // 
 };
 
 struct data_registry_ {
