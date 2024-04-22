@@ -7,7 +7,10 @@ typedef struct header_registry_ header_registry;
 typedef struct data_registry_ data_registry;
 typedef struct file_object_ file_object;
 
-//file_object* abrirArquivoBin(char* bin_name);
+/*
+ * Definindo as funções para manipulação do arquivo e setters e getters das estruturas de dados
+ * do registro de cabeçalho e registros de dados
+ * */
 file_object* criarArquivoBin(char *bin_name);
 void fecharArquivoBin(file_object** fileObj);
 data_registry* criarRegistro();
