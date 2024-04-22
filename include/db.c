@@ -144,6 +144,7 @@ void select_from(char* bin_name){            // função que imprime os registro
         player->nomeJogador = NULL;
         player->nacionalidade = NULL;
         player->nomeClube = NULL;
+    int EXIST=0;
     while(1){
         char a = getc(bin);        // necessario para verificar se chegamos em EOF    
         if (a == EOF)
@@ -182,6 +183,7 @@ void select_from(char* bin_name){            // função que imprime os registro
 
         }
         imprimePlayerData(player);
+        EXIST=1;
         if (player->nomeJogador != NULL)
             free(player->nomeJogador);
         if (player->nacionalidade != NULL)
@@ -192,6 +194,11 @@ void select_from(char* bin_name){            // função que imprime os registro
         player->nacionalidade = NULL;
         player->nomeClube = NULL;
     }
+
+    if(!EXIST){
+        printf("Registro inexistente.\n\n");
+    }
+
     free(player);
     fclose(bin);
 }
@@ -201,7 +208,6 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
         int num_fields;        // quantidade de campos que sao requisitados na busca
         char field_name[20];        // para ler o nome do campo
 
-        // int it=num_queries;        // auxiliar que recebe a quantidade de buscas
         for(int i=0;i<num_queries;i++){
             parametros[i].id=-1;
             parametros[i].idade=-1;
@@ -232,7 +238,7 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
 
         // inicio da operação
 
-        for(int i=0;i<num_queries;i++){
+        for(int i=0;i<num_queries;i++){             // LOOP DAS BUSCAS
             int EXIST=0;
             FILE *bin = fopen(bin_name, "rb");
 
@@ -256,7 +262,7 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                 player->nacionalidade = NULL;
                 player->nomeClube = NULL;
                 
-            while(1){
+            while(1){           // COMEÇAMOS A LER O ARQUIVO BINARIO
                 char a = getc(bin);
                 if (a == EOF)
                     break;
@@ -310,30 +316,31 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                     neededFit++;
                 }
                 if(idBuscado!=-1){
-                  //  printf("id buscado eh %d\n", idBuscada);
+                  
                     if(idBuscado==id){
                         contadorDeFit++;
                     }
                     neededFit++;
                 }
-                if(strlen(nacionalidadeBuscada)>0){
-                   // printf("nacionalidade buscada eh %s\n", nacionalidadeBuscada);
-                    if(strcmp(nacionalidadeBuscada, player->nacionalidade)==0){
-                        contadorDeFit++;
-                    }
+                if(strlen(nacionalidadeBuscada)>0){ 
+                    if(player->nacionalidade!=NULL)
+                        if(strcmp(nacionalidadeBuscada, player->nacionalidade)==0)
+                            contadorDeFit++;
+                    
                     neededFit++;
                 }
                 if(strlen(nomeBuscado)>0){
-                  //  printf("nacionalidade buscada eh %s\n", nacionalidadeBuscada);
-                    if(strcmp(nomeBuscado, player->nomeJogador)==0){
-                        contadorDeFit++;
-                    }
+                    if(player->nomeJogador!=NULL)
+                        if(strcmp(nomeBuscado, player->nomeJogador)==0)
+                            contadorDeFit++;
+                    
                     neededFit++;
                 }
                 if(strlen(clubeBuscado)>0){
-                    if(strcmp(clubeBuscado, player->nomeClube)==0){
-                        contadorDeFit++;
-                    }
+                    if(player->nomeClube!=NULL)
+                        if(strcmp(clubeBuscado, player->nomeClube)==0)
+                            contadorDeFit++;
+                        
                     neededFit++;
                 }
 
@@ -365,6 +372,8 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                 player->nomeClube = NULL;
                 
             }
+               
+
             if(!EXIST){
                 printf("Registro inexistente.\n\n");
             }
