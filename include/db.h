@@ -1,6 +1,9 @@
 #ifndef DB_H
 #define DB_H
 #include "file_utils.h"
+
+// definindo as funcionalidades do banco de dados
+
 typedef struct player_data_ player_data;
 typedef struct parametrosDeBusca_ parametrosDeBusca;
 

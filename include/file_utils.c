@@ -133,50 +133,50 @@ void setNomeJogador(data_registry* registro, char* nomeJogador){
     registro->nomeJogador = nomeJogador;
 }
 
-void setTamNacionalidade(data_registry* registro, int tam){
+void setTamNacionalidade(data_registry* registro, int tam){         // define o tamanho da string da nacionalidade
     registro->tamNacionalidade = tam;
 }
-void setNacionalidade(data_registry* registro, char* nacionalidade){
+void setNacionalidade(data_registry* registro, char* nacionalidade){         // define a nacionalidade do registro caso haja
     if (registro->nacionalidade != NULL)
         free(registro->nacionalidade);
     registro->nacionalidade = nacionalidade;
 }
 
-void setTamNomeClube(data_registry* registro, int tam){
+void setTamNomeClube(data_registry* registro, int tam){         // define o tamanho do nome do clube 
     registro->tamNomeClube = tam;
 }
 
-void setNomeClube(data_registry* registro, char* nomeClube){
+void setNomeClube(data_registry* registro, char* nomeClube){         // define o nome do clube do registro
     if (registro->nomeClube != NULL)
         free(registro->nomeClube);
     registro->nomeClube = nomeClube;
 }
 
-void setProx(data_registry* registro, int index){
+void setProx(data_registry* registro, int index){         // define o proximo 
     registro->prox = index;
 }
 
-void setRemovido(data_registry* registro, int op){
+void setRemovido(data_registry* registro, int op){         // define logicamente se o registro foi removido
     registro->removido = op; 
 }
 
-void setTamanhoRegistro(data_registry* registro, int tam){
+void setTamanhoRegistro(data_registry* registro, int tam){         // define o tamanho do registro
     registro->tamanhoRegistro = tam;
 }
 
-void setHeaderStatus(file_object* fileObj, char status){
+void setHeaderStatus(file_object* fileObj, char status){         // define o status do arquivo
     fileObj->header->status = status;
 }
-void setHeaderTopo(file_object* fileObj, int64_t topo){
+void setHeaderTopo(file_object* fileObj, int64_t topo){         // define o topo
     fileObj->header->topo = topo;
 }
-void setHeaderProxByteOffset(file_object* fileObj, int64_t proxByteOffset){
+void setHeaderProxByteOffset(file_object* fileObj, int64_t proxByteOffset){         //  define o byteoffset
     fileObj->header->proxByteOffset = proxByteOffset;
 }
-void setHeaderNroRegArq(file_object* fileObj, int32_t nroRegArq){
+void setHeaderNroRegArq(file_object* fileObj, int32_t nroRegArq){           // funçao para definir o numero de registros que nao foram removidos
     fileObj->header->nroRegArq = nroRegArq;
 }
-void setHeaderNroRegRem(file_object* fileObj, int32_t nroRegRem){
+void setHeaderNroRegRem(file_object* fileObj, int32_t nroRegRem){           // funçao para definir o numero de registros removidos no arquivo
     fileObj->header->nroRegRem = nroRegRem;
 }
 void binarioNaTela(char *nomeArquivoBinario) { /* Você não precisa entender o código dessa função. */
