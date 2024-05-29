@@ -137,15 +137,26 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
     return 1;
 }
 
+int create_index(char* bin_name, char* index_bin_name){
+    file_object* fileObj = criarArquivoBin(bin_name);            // cria o arquivo bin
+}
+
 void select_from(char* bin_name){            // função que imprime os registros do arquivo binario na forma pedida (operação 2)
     FILE *bin = fopen(bin_name, "rb");             // abre o arquivo binario
-
+    
     if(bin==NULL){
         printf("Falha no processamento do arquivo.\n");
         return;
     }
+    char stats;
+    fread(&stats, 1, 1, bin);
 
-    fseek(bin, 25, SEEK_SET);            
+    if(stats==0){
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    fseek(bin, 24, SEEK_SET);            
 
     player_data* player = (player_data*) malloc(sizeof(player_data));            // auxilia na modularizaçao para imprimir cada jogador 
         player->nomeJogador = NULL;
@@ -252,6 +263,14 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
             FILE *bin = fopen(bin_name, "rb");          // abre o arquivo binario
 
             if(bin==NULL){
+                printf("Falha no processamento do arquivo.\n");
+                return;
+            }
+
+            char stats;
+            fread(&stats, 1, 1, bin);
+
+            if(stats==0){
                 printf("Falha no processamento do arquivo.\n");
                 return;
             }
@@ -389,6 +408,14 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
             free(player);
             fclose(bin);
         }
+}
+
+void delete_from_where(char* bin_name, char* index_bin_name, int n){
+
+}
+
+void insert_into(char* bin_name, char* index_bin_name, int n){
+
 }
 
 void imprimePlayerData(player_data *player){            // função que imprime a nacionalidade, nome e clube do jogador
