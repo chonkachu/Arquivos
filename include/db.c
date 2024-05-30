@@ -145,7 +145,41 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
 }
 
 int create_index(char* bin_name, char* index_bin_name){
-    file_object* fileObj = criarArquivoBin(bin_name);            // cria o arquivo bin
+    FILE* fileObj = criarArquivoBin(bin_name);            // cria o arquivo bin
+
+     FILE *bin = fopen(bin_name, "rb");             // abre o arquivo binario
+    
+    if(bin==NULL){
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+    char stats;
+    fread(&stats, 1, 1, bin);
+
+    if(stats==0){
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    fseek(bin, 24, SEEK_SET);            
+
+    int EXIST=0;            // variavel para auxiliar em caso de registro inexistente
+
+    while(1){
+        char a = getc(bin);        // necessario para verificar se chegamos em EOF    
+        if (a == EOF)
+            break;
+            
+        if(a=='1'){
+            int tamReg=0;        // o registro esta logicamente removido portanto vamos pular o registro inteiro
+            fread(&tamReg, 4, 1, bin);
+            fseek(bin, tamReg-5, SEEK_CUR);
+            continue;
+        }
+        
+    }
+
+    fclose(bin);
 }
 
 void select_from(char* bin_name){            // função que imprime os registros do arquivo binario na forma pedida (operação 2)

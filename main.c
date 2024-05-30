@@ -1,3 +1,8 @@
+/*
+    Thales Sena de Queiroz - 14608873
+    Christian Bernard Simas Corrêa Gioia Ribeiro - 11795572
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include "file_utils.h"
