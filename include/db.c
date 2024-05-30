@@ -74,7 +74,7 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
             }
             else{
                 setId(registro, atoi(str));
-                printf("%s\n", str);
+                
                 free(str);
             }
         }
@@ -476,7 +476,298 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
 }
 
 void delete_from_where(char* bin_name, char* index_bin_name, int n){
+    parametrosDeBusca parametros[1024];        // vetor que ira armazenar as especificaçoes de cada busca para lermos primeiro a entrada e somente depois imprimir
+        int num_fields;        // quantidade de campos que sao requisitados na busca
+        char field_name[20];        // para ler o nome do campo
 
+        for(int i=0;i<n;i++){
+            parametros[i].id=-1;
+            parametros[i].idade=-1;
+            parametros[i].nacionalidade[0]='\0';
+            parametros[i].clube[0]='\0';
+            parametros[i].nome[0]='\0';
+
+            scanf("%d", &num_fields); 
+            for (int j = 0; j < num_fields; j++) {
+                scanf("%s", field_name);
+                if (strcmp(field_name, "id") == 0) {
+                    scanf("%d", &parametros[i].id);
+                }
+                else if (strcmp(field_name, "idade") == 0) {
+                    scanf("%d", &parametros[i].idade);
+                }
+                else if (strcmp(field_name, "nacionalidade") == 0) {
+                    scan_quote_string(parametros[i].nacionalidade);
+                }
+                else if (strcmp(field_name, "nomeJogador") == 0) {
+                    scan_quote_string(parametros[i].nome);
+                }
+                else if (strcmp(field_name, "nomeClube") == 0) {
+                     scan_quote_string(parametros[i].clube);
+                }
+            }
+        }           // Fim da computação da entrada
+
+        // inicio da operação
+
+        for(int i=0;i<n;i++){             // LOOP DAS BUSCAS
+            
+            FILE *bin = fopen(bin_name, "rb");          // abre o arquivo binario
+
+            if(bin==NULL){
+                printf("Falha no processamento do arquivo.\n");
+                return;
+            }
+
+            char stats;
+    fread(&stats, 1, 1, bin);
+
+    if(stats=='0'){
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }else{ // como vamos escrever no arquivo mudamos seu estado para inconsistente
+        fseek(bin, 0, SEEK_SET);
+        fwrite('0', 1, 1, bin);
+    }
+
+    int Topo;
+    fread(&Topo, 8, 1, bin);
+    fseek(bin, 24, SEEK_CUR); 
+
+            int idBuscado=parametros[i].id;         // o id buscado
+            int idadeBuscada=parametros[i].idade;       // a idade buscada
+            char* nacionalidadeBuscada=parametros[i].nacionalidade;         // a nacionalidade
+            char* nomeBuscado=parametros[i].nome;         // nome
+            char* clubeBuscado=parametros[i].clube;         // clube
+
+            int jump=-1;
+            if(idBuscado!=-1){
+                jump=indBB(idBuscado); // nao fiz a funçao nem defini ainda
+            }
+
+            player_data* player = (player_data*) malloc(sizeof(player_data)); 
+                player->nomeJogador = NULL;
+                player->nacionalidade = NULL;
+                player->nomeClube = NULL;
+
+            if(jump!=-1){
+                fseek(bin, jump, SEEK_SET);
+                char a = getc(bin);         // auxilia para saber se chegamos em EOF ou se foi logicamente removido
+                if (a == EOF)
+                    break;
+                if(a=='1'){ // registro logicamente removido nada a se fazer (nunca vai acontecer)
+                    break;
+                }
+
+                fseek(bin, 12, SEEK_CUR); // skippa tamreg e prox
+
+                int id=-1;          // id lido do registro atual
+                int idade=-1;          // idade lida do registro atual
+
+                fread(&id, 4, 1, bin);
+                fread(&idade, 4, 1, bin);
+
+                int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0;         // armazenaram respectivamente tamanho da string de nacionalidade, nome do jogador e nome do clube do registro atual
+                fread(&tamNomeJog, 4, 1, bin);
+
+                //montamos o player atual
+
+                if (tamNomeJog != 0) {          
+                    player->nomeJogador = (char*) malloc((tamNomeJog+1)*sizeof(char));
+                    fread(player->nomeJogador, 1, tamNomeJog, bin);
+                    player->nomeJogador[tamNomeJog] = '\0';
+                }
+
+                fread(&tamNacionalidade, 4, 1, bin);
+                if (tamNacionalidade != 0){
+                    player->nacionalidade = (char*) malloc((tamNacionalidade+1)*sizeof(char));
+                    fread(player->nacionalidade, 1, tamNacionalidade, bin);
+                    player->nacionalidade[tamNacionalidade] = '\0';
+
+                }
+                fread(&tamNomeClube, 4, 1, bin);
+                if (tamNomeClube != 0) {
+                    player->nomeClube = (char*) malloc((tamNomeClube+1)*sizeof(char));
+                    fread(player->nomeClube, 1, tamNomeClube, bin);
+                    player->nomeClube[tamNomeClube] = '\0';
+
+                } // fim da montagem
+
+                
+                int contadorDeFit=0;            // contador para saber se o registro possui todos os campos que estao sendo procurados
+                int neededFit=0;            // a quantidade de campos necessarias;
+                if(idadeBuscada!=-1){
+                    if(idadeBuscada==idade){
+                        contadorDeFit++;
+                    }
+                    neededFit++;
+                }
+                if(idBuscado!=-1){
+                    if(idBuscado==id){
+                        contadorDeFit++;
+                    }
+                    neededFit++;
+                }
+                if(strlen(nacionalidadeBuscada)>0){ 
+                    if(player->nacionalidade!=NULL)
+                        if(strcmp(nacionalidadeBuscada, player->nacionalidade)==0)
+                            contadorDeFit++;
+                    
+                    neededFit++;
+                }
+                if(strlen(nomeBuscado)>0){
+                    if(player->nomeJogador!=NULL)
+                        if(strcmp(nomeBuscado, player->nomeJogador)==0)
+                            contadorDeFit++;
+                    
+                    neededFit++;
+                }
+                if(strlen(clubeBuscado)>0){
+                    if(player->nomeClube!=NULL)
+                        if(strcmp(clubeBuscado, player->nomeClube)==0)
+                            contadorDeFit++;
+                        
+                    neededFit++;
+                }
+
+
+                if(neededFit==contadorDeFit){
+                    
+
+                    fseek(bin, jump, SEEK_SET);
+                    fwrite('1', 1, 1, bin);
+                    fseek(bin, 4, SEEK_CUR);
+                    fwrite(Topo, 8, 1, bin);
+                    Topo=jump;
+                        
+                        if (player->nomeJogador != NULL)
+                         free(player->nomeJogador);
+                        if (player->nacionalidade != NULL)
+                         free(player->nacionalidade);
+                            if (player->nomeClube != NULL)
+                                free(player->nomeClube);
+                            player->nomeJogador = NULL;
+                            player->nacionalidade = NULL;
+                            player->nomeClube = NULL;
+                            
+                }
+            }
+            else{   
+            while(1){           // COMEÇAMOS A LER O ARQUIVO BINARIO
+                int64_t byteOff=ftell(bin);
+                char a = getc(bin);         // auxilia para saber se chegamos em EOF ou se foi logicamente removido
+                if (a == EOF)
+                    break;
+                if(a=='1'){
+                    int tamReg=0;
+                    fread(&tamReg, 4, 1, bin);
+                    fseek(bin, tamReg-5, SEEK_CUR);
+                    continue;
+                }
+
+                fseek(bin, 12, SEEK_CUR); // skippa tamreg e prox
+
+                int id=-1;          // id lido do registro atual
+                int idade=-1;          // idade lida do registro atual
+
+                fread(&id, 4, 1, bin);
+                fread(&idade, 4, 1, bin);
+
+                int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0;         // armazenaram respectivamente tamanho da string de nacionalidade, nome do jogador e nome do clube do registro atual
+                fread(&tamNomeJog, 4, 1, bin);
+
+                //montamos o player atual
+
+                if (tamNomeJog != 0) {          
+                    player->nomeJogador = (char*) malloc((tamNomeJog+1)*sizeof(char));
+                    fread(player->nomeJogador, 1, tamNomeJog, bin);
+                    player->nomeJogador[tamNomeJog] = '\0';
+                }
+
+                fread(&tamNacionalidade, 4, 1, bin);
+                if (tamNacionalidade != 0){
+                    player->nacionalidade = (char*) malloc((tamNacionalidade+1)*sizeof(char));
+                    fread(player->nacionalidade, 1, tamNacionalidade, bin);
+                    player->nacionalidade[tamNacionalidade] = '\0';
+
+                }
+                fread(&tamNomeClube, 4, 1, bin);
+                if (tamNomeClube != 0) {
+                    player->nomeClube = (char*) malloc((tamNomeClube+1)*sizeof(char));
+                    fread(player->nomeClube, 1, tamNomeClube, bin);
+                    player->nomeClube[tamNomeClube] = '\0';
+
+                } // fim da montagem
+
+                
+                int contadorDeFit=0;            // contador para saber se o registro possui todos os campos que estao sendo procurados
+                int neededFit=0;            // a quantidade de campos necessarias;
+                if(idadeBuscada!=-1){
+                    if(idadeBuscada==idade){
+                        contadorDeFit++;
+                    }
+                    neededFit++;
+                }
+                if(idBuscado!=-1){
+                    if(idBuscado==id){
+                        contadorDeFit++;
+                    }
+                    neededFit++;
+                }
+                if(strlen(nacionalidadeBuscada)>0){ 
+                    if(player->nacionalidade!=NULL)
+                        if(strcmp(nacionalidadeBuscada, player->nacionalidade)==0)
+                            contadorDeFit++;
+                    
+                    neededFit++;
+                }
+                if(strlen(nomeBuscado)>0){
+                    if(player->nomeJogador!=NULL)
+                        if(strcmp(nomeBuscado, player->nomeJogador)==0)
+                            contadorDeFit++;
+                    
+                    neededFit++;
+                }
+                if(strlen(clubeBuscado)>0){
+                    if(player->nomeClube!=NULL)
+                        if(strcmp(clubeBuscado, player->nomeClube)==0)
+                            contadorDeFit++;
+                        
+                    neededFit++;
+                }
+
+
+                if(neededFit==contadorDeFit){
+                    
+
+                    fseek(bin, byteOff, SEEK_SET);
+                    fwrite('1', 1, 1, bin);
+                    fseek(bin, 4, SEEK_CUR);
+                    fwrite(Topo, 8, 1, bin);
+                    Topo=byteOff;
+                        
+                        if (player->nomeJogador != NULL)
+                         free(player->nomeJogador);
+                        if (player->nacionalidade != NULL)
+                         free(player->nacionalidade);
+                            if (player->nomeClube != NULL)
+                                free(player->nomeClube);
+                            player->nomeJogador = NULL;
+                            player->nacionalidade = NULL;
+                            player->nomeClube = NULL;
+                            
+                }
+                
+            }
+            }
+
+            fseek(bin, 0, SEEK_SET);
+            fwrite('1', 1, 1, bin); // iremos fechar entao esta consistente
+            fwrite(Topo, 8, 1, bin); //escreve o novo top no header para a proxima busca
+
+            free(player);
+            fclose(bin);
+        }
 }
 
 void insert_into(char* bin_name, char* index_bin_name, int n){
