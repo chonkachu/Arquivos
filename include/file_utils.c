@@ -12,6 +12,10 @@ struct header_registry_ {
     int32_t nroRegRem;          // numero de registros removidos
 };
 
+struct header_index_{
+    char status;        // status do arquivo para saber se ele esta consistente
+};
+
 struct data_registry_ {
     char removido; // byte que sinaliza que o registro está removido
     int32_t tamanhoRegistro; // tamanho do registro de dados
@@ -26,12 +30,22 @@ struct data_registry_ {
     char *nomeClube; // campo de nome do clube do registro de dados
 };
 
+struct data_index_ {
+    int32_t id;          // id do campo
+    int64_t byteOffset;  // byteoffset do campo
+};
+
 // estrutura que guarda o ponteiro para o arquivo e o registro de cabeçalho do arquivo
 struct file_object_ {
     header_registry *header;
     FILE *file;
     int32_t fileIndex;
 };
+struct file_object_ind_ {
+    header_index *header;
+    FILE *file;
+};
+
 // função que inicializa a estrutura de dados file_object
 file_object* criarArquivoBin(char *bin_name){
     file_object *fileObj = (file_object*) malloc(sizeof(file_object));
@@ -42,6 +56,66 @@ file_object* criarArquivoBin(char *bin_name){
     fileObj->fileIndex = 0;
     
     return fileObj;
+}
+
+file_object_ind* criarArquivoBinInd(char *bin_name){
+    file_object_ind *fileObj = (file_object_ind*) malloc(sizeof(file_object_ind));
+    header_index *header = (header_index*) malloc(sizeof(header_index));
+    FILE* bin = fopen(bin_name, "wb+");
+    fileObj->header = header;
+    fileObj->file = bin;
+    
+    return fileObj;
+}
+
+data_index** criarVetorIndice(int n){
+    data_index **arr = (data_index**)malloc(sizeof(data_index*)*n);
+    for(int i=0;i<n;i++){
+        arr[i]=(data_index*)malloc(sizeof(data_index));
+        arr[i]->id=0x7ffffff;
+        arr[i]->byteOffset=-1;
+    }
+    return arr;
+}
+int32_t getIndiceId(data_index* a){
+    return a->id;
+}
+int64_t getByteOff(data_index* a){
+    return a->byteOffset;
+}
+void setIndiceId(data_index* a, int32_t id){
+    a->id = id;
+}
+void setIndiceByteOff(data_index* a, int64_t byteOff){
+    a->byteOffset = byteOff;
+}
+int comparaIndice(const void *a, const void *b) {
+    const data_index *da = *(const data_index **)a;
+    const data_index *db = *(const data_index **)b;
+    
+    if (da->id < db->id) return -1;
+    if (da->id > db->id) return 1;
+    return 0;
+}
+void setHeaderStatusInd(file_object_ind* fileObj, char status){
+    fileObj->header->status = status;
+}
+void writeRegistroCabecalhoInd(file_object_ind* fileObj){
+    fseek(fileObj->file, 0, SEEK_SET);
+    fwrite(&fileObj->header->status, 1, 1, fileObj->file);
+    fseek(fileObj->file, 0, SEEK_END);
+}
+void writeRegistroDadosInd(file_object_ind* fileObj, data_index** arr, int i){
+    for(int k=0;k<i;k++){
+        fwrite(&arr[k]->id, 4, 1, fileObj->file);
+        fwrite(&arr[k]->byteOffset, 8, 1, fileObj->file);
+    }
+}
+void fecharArquivoBinInd(file_object_ind** fileObj){
+    fclose((*fileObj)->file);
+    free((*fileObj)->header);
+    free(*fileObj);
+    *fileObj = NULL;
 }
 
 // função que inicializa os registros de dados

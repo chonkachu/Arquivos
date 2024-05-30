@@ -30,7 +30,16 @@ int main() {
         
         select_from_where(bin_name, num_queries);            
         
+    }else if (op == 4) {
+         scanf(" %s %s", csv_name, bin_name);
+        create_index(csv_name, bin_name);            
+        
+    }else if (op == 5) {            
+        
+    }else if (op == 6) {    
+        
     }
+    
 
     return 0;
 }

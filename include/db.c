@@ -145,9 +145,9 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
 }
 
 int create_index(char* bin_name, char* index_bin_name){
-    FILE* fileObj = criarArquivoBin(bin_name);            // cria o arquivo bin
+    FILE *bin = fopen(bin_name, "rb");             // abre o arquivo binario
 
-     FILE *bin = fopen(bin_name, "rb");             // abre o arquivo binario
+    data_index **arr = criarVetorIndice(30113);
     
     if(bin==NULL){
         printf("Falha no processamento do arquivo.\n");
@@ -156,30 +156,51 @@ int create_index(char* bin_name, char* index_bin_name){
     char stats;
     fread(&stats, 1, 1, bin);
 
-    if(stats==0){
+    if(stats=='0'){
         printf("Falha no processamento do arquivo.\n");
         return;
     }
 
-    fseek(bin, 24, SEEK_SET);            
-
-    int EXIST=0;            // variavel para auxiliar em caso de registro inexistente
-
+    fseek(bin, 24, SEEK_CUR);            
+    int i=0;
     while(1){
-        char a = getc(bin);        // necessario para verificar se chegamos em EOF    
-        if (a == EOF)
+        int64_t byteOff=ftell(bin);
+        char status = getc(bin);        // necessario para verificar se chegamos em EOF    
+        if (status == EOF)
             break;
-            
-        if(a=='1'){
+        
+        if(status == '1'){
             int tamReg=0;        // o registro esta logicamente removido portanto vamos pular o registro inteiro
             fread(&tamReg, 4, 1, bin);
             fseek(bin, tamReg-5, SEEK_CUR);
             continue;
         }
+
+        int tamReg=0;        
+        fread(&tamReg, 4, 1, bin);
+        fseek(bin, 8, SEEK_CUR);
+
+        int id;
+        fread(&id, 4, 1, bin);
+
         
+
+        setIndiceByteOff(arr[i], byteOff);
+        setIndiceId(arr[i], id);
+
+        fseek(bin, tamReg-17, SEEK_CUR);
+        i++;
     }
 
+    qsort(arr, 30113, sizeof(data_index*), comparaIndice);
+
+    file_object_ind* fileObj = criarArquivoBinInd(index_bin_name);            // cria o arquivo bin
+    setHeaderStatusInd(fileObj, '1');
+    writeRegistroCabecalhoInd(fileObj);
+    writeRegistroDadosInd(fileObj, arr, i);
+    fecharArquivoBinInd(&fileObj);
     fclose(bin);
+    binarioNaTela(index_bin_name);
 }
 
 void select_from(char* bin_name){            // função que imprime os registros do arquivo binario na forma pedida (operação 2)
@@ -189,15 +210,15 @@ void select_from(char* bin_name){            // função que imprime os registro
         printf("Falha no processamento do arquivo.\n");
         return;
     }
-    char stats;
+  char stats;
     fread(&stats, 1, 1, bin);
 
-    if(stats==0){
+    if(stats=='0'){
         printf("Falha no processamento do arquivo.\n");
         return;
     }
 
-    fseek(bin, 24, SEEK_SET);            
+    fseek(bin, 24, SEEK_CUR);            
 
     player_data* player = (player_data*) malloc(sizeof(player_data));            // auxilia na modularizaçao para imprimir cada jogador 
         player->nomeJogador = NULL;
@@ -309,12 +330,14 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
             }
 
             char stats;
-            fread(&stats, 1, 1, bin);
+    fread(&stats, 1, 1, bin);
 
-            if(stats==0){
-                printf("Falha no processamento do arquivo.\n");
-                return;
-            }
+    if(stats=='0'){
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    fseek(bin, 24, SEEK_CUR); 
 
             printf("Busca %d\n\n", i+1);
 
@@ -324,7 +347,7 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
             char* nomeBuscado=parametros[i].nome;         // nome
             char* clubeBuscado=parametros[i].clube;         // clube
 
-            fseek(bin, 25, SEEK_SET);
+            
 
             player_data* player = (player_data*) malloc(sizeof(player_data)); 
                 player->nomeJogador = NULL;
