@@ -35,16 +35,20 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
     data_registry* registro;            // montamos registro para escrever certinho no arquivo binario
     while(1){
         int reachedEOF = 0;            // variavel para saber se chegamos em EOF
-        char* str = (char *) malloc(50*sizeof(char));            //string para ler o campo  
+        char* str = (char *) malloc(50*sizeof(char));             //string para ler o campo  
         if (rotation == 0)
             registro = criarRegistro();
         for(int i = 0;;i++){
             char a = getc(csv_file);            // lemos caracter por caracter
+            
             if (a == EOF){
                 reachedEOF=1;
                 break;
             }
-            if(a==',' || a=='\n'){              // momento em que o campo atual acaba de eser lido
+            if(a=='\r'){
+                a=getc(csv_file);
+            }
+            if(a==',' || a=='\n'){              // momento em que o campo atual acaba de ser lido
                 str[i]='\0';        
                 break;
             }
@@ -62,6 +66,7 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
         }
 
         if(rotation==0){            // foi lido o campo de id
+        
             if(str[0]=='\0'){
                 setId(registro, -1);
                 if(str!=NULL)
@@ -69,6 +74,7 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
             }
             else{
                 setId(registro, atoi(str));
+                printf("%s\n", str);
                 free(str);
             }
         }
@@ -122,9 +128,10 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
             cnt++;
             rotation = 0;
             continue;
+            
         }
         rotation++;
-       // if(str!=NULL) free(str);
+       
     }
     setHeaderStatus(fileObj, '1');
     setHeaderProxByteOffset(fileObj, byteOff);
