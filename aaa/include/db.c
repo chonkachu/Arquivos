@@ -31,7 +31,7 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
 
     int cnt = 0;            // conta a quantidade de registros
     int rotation = 0;            // variavel auxiliar para sabermos qual campo estamos lendo agora ou se o jogar foi completamente lido
-    int byteOff = 25;   
+    int byteOff = 25;           // ponto inicial dos dados apos o cabeçalho
     data_registry* registro;            // montamos registro para escrever certinho no arquivo binario
     while(1){
         int reachedEOF = 0;            // variavel para saber se chegamos em EOF
@@ -44,8 +44,8 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
                 reachedEOF=1;
                 break;
             }
-            if(a==',' || a=='\n'){
-                str[i]='\0';
+            if(a==',' || a=='\n'){              // momento em que o campo atual acaba de eser lido
+                str[i]='\0';        
                 break;
             }
             else{
@@ -61,25 +61,29 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
             break;
         }
 
-        if(rotation==0){
+        if(rotation==0){            // foi lido o campo de id
             if(str[0]=='\0'){
                 setId(registro, -1);
+                if(str!=NULL)
+                    free(str);
             }
             else{
                 setId(registro, atoi(str));
                 free(str);
             }
         }
-        else if(rotation==1){
+        else if(rotation==1){            // foi lido o campo de idade
             if(str[0]=='\0'){
                 setIdade(registro, -1);
+                if(str!=NULL)
+                    free(str);
             }
             else{
                 setIdade(registro, atoi(str));
                 free(str);
             }
         }
-        else if(rotation==2){
+        else if(rotation==2){            // foi lido o campo de nome do jogador
             setTamNomeJogador(registro, len);
             if(str[0]!='\0'){
                 setNomeJogador(registro, str);  
@@ -88,7 +92,7 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
                 free(str);
             }
         }
-        else if(rotation==3){
+        else if(rotation==3){            // foi lido o campo de nacionalidade
             setTamNacionalidade(registro, len);
             if(str[0]!='\0'){
                 setNacionalidade(registro, str);
@@ -97,7 +101,7 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
                 free(str);
             }
         }
-        else{
+        else{            // foi lido o campo de nome do clube e tambem chega a hora de finalizar o registro e escrevelo no binario
             setTamNomeClube(registro, len);
             if(str[0]!='\0'){
                 setNomeClube(registro, str);
@@ -112,12 +116,15 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
 	    byteOff += tamReg;
             setTamanhoRegistro(registro, tamReg);
             writeRegistroDados(fileObj, registro);
+            
             liberarRegistro(&registro);
+            //free(str);
             cnt++;
             rotation = 0;
             continue;
         }
         rotation++;
+       // if(str!=NULL) free(str);
     }
     setHeaderStatus(fileObj, '1');
     setHeaderProxByteOffset(fileObj, byteOff);
@@ -134,6 +141,7 @@ void select_from(char* bin_name){            // função que imprime os registro
     FILE *bin = fopen(bin_name, "rb");             // abre o arquivo binario
 
     if(bin==NULL){
+        printf("Falha no processamento do arquivo.\n");
         return;
     }
 
@@ -143,21 +151,25 @@ void select_from(char* bin_name){            // função que imprime os registro
         player->nomeJogador = NULL;
         player->nacionalidade = NULL;
         player->nomeClube = NULL;
+
+    int EXIST=0;            // variavel para auxiliar em caso de registro inexistente
+
     while(1){
         char a = getc(bin);        // necessario para verificar se chegamos em EOF    
         if (a == EOF)
             break;
+            
         if(a=='1'){
             int tamReg=0;        // o registro esta logicamente removido portanto vamos pular o registro inteiro
             fread(&tamReg, 4, 1, bin);
-            fseek(bin, tamReg, SEEK_CUR);
+            fseek(bin, tamReg-5, SEEK_CUR);
             continue;
         }
         fseek(bin, 20, SEEK_CUR);        // pulamos direto para os campos de tamanho variavel pois sao os que serão impressos
         int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0;        // armazenaram respectivamente tamanho da string de nacionalidade, nome do jogador e nome do clube
         fread(&tamNomeJog, 4, 1, bin);
         
-        if (tamNomeJog != 0) {
+        if (tamNomeJog != 0) {          // aloca 
             player->nomeJogador = (char*) malloc((tamNomeJog+1)*sizeof(char));
             fread(player->nomeJogador, 1, tamNomeJog, bin);
             player->nomeJogador[tamNomeJog] = '\0';
@@ -180,6 +192,7 @@ void select_from(char* bin_name){            // função que imprime os registro
 
         }
         imprimePlayerData(player);
+        EXIST=1;
         if (player->nomeJogador != NULL)
             free(player->nomeJogador);
         if (player->nacionalidade != NULL)
@@ -190,6 +203,11 @@ void select_from(char* bin_name){            // função que imprime os registro
         player->nacionalidade = NULL;
         player->nomeClube = NULL;
     }
+
+    if(!EXIST){
+        printf("Registro inexistente.\n\n");
+    }
+
     free(player);
     fclose(bin);
 }
@@ -199,7 +217,6 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
         int num_fields;        // quantidade de campos que sao requisitados na busca
         char field_name[20];        // para ler o nome do campo
 
-        int it=num_queries;        // auxiliar que recebe a quantidade de buscas
         for(int i=0;i<num_queries;i++){
             parametros[i].id=-1;
             parametros[i].idade=-1;
@@ -226,15 +243,16 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                      scan_quote_string(parametros[i].clube);
                 }
             }
-        }           // Fim da computação na entrada
+        }           // Fim da computação da entrada
 
         // inicio da operação
 
-        for(int i=0;i<num_queries;i++){
-            FILE *bin = fopen(bin_name, "rb");
+        for(int i=0;i<num_queries;i++){             // LOOP DAS BUSCAS
+            int EXIST=0;            // variavel que auxilia em caso de registro inexistente
+            FILE *bin = fopen(bin_name, "rb");          // abre o arquivo binario
 
             if(bin==NULL){
-                printf("Falha ao carregar aquivo");
+                printf("Falha no processamento do arquivo.\n");
                 return;
             }
 
@@ -253,14 +271,14 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                 player->nacionalidade = NULL;
                 player->nomeClube = NULL;
                 
-            while(1){
-                char a = getc(bin);
+            while(1){           // COMEÇAMOS A LER O ARQUIVO BINARIO
+                char a = getc(bin);         // auxilia para saber se chegamos em EOF ou se foi logicamente removido
                 if (a == EOF)
                     break;
                 if(a=='1'){
                     int tamReg=0;
                     fread(&tamReg, 4, 1, bin);
-                    fseek(bin, tamReg, SEEK_CUR);
+                    fseek(bin, tamReg-5, SEEK_CUR);
                     continue;
                 }
 
@@ -274,8 +292,10 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
 
                 int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0;         // armazenaram respectivamente tamanho da string de nacionalidade, nome do jogador e nome do clube do registro atual
                 fread(&tamNomeJog, 4, 1, bin);
-                
-                if (tamNomeJog != 0) {
+
+                //montamos o player atual
+
+                if (tamNomeJog != 0) {          
                     player->nomeJogador = (char*) malloc((tamNomeJog+1)*sizeof(char));
                     fread(player->nomeJogador, 1, tamNomeJog, bin);
                     player->nomeJogador[tamNomeJog] = '\0';
@@ -294,7 +314,7 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                     fread(player->nomeClube, 1, tamNomeClube, bin);
                     player->nomeClube[tamNomeClube] = '\0';
 
-                }
+                } // fim da montagem
 
                 
                 int contadorDeFit=0;            // contador para saber se o registro possui todos os campos que estao sendo procurados
@@ -311,27 +331,31 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                     }
                     neededFit++;
                 }
-                if(strlen(nacionalidadeBuscada)>0){
-                    if(strcmp(nacionalidadeBuscada, player->nacionalidade)){
-                        contadorDeFit++;
-                    }
+                if(strlen(nacionalidadeBuscada)>0){ 
+                    if(player->nacionalidade!=NULL)
+                        if(strcmp(nacionalidadeBuscada, player->nacionalidade)==0)
+                            contadorDeFit++;
+                    
                     neededFit++;
                 }
                 if(strlen(nomeBuscado)>0){
-                    if(strcmp(nomeBuscado, player->nomeJogador)){
-                        contadorDeFit++;
-                    }
+                    if(player->nomeJogador!=NULL)
+                        if(strcmp(nomeBuscado, player->nomeJogador)==0)
+                            contadorDeFit++;
+                    
                     neededFit++;
                 }
                 if(strlen(clubeBuscado)>0){
-                    if(strcmp(clubeBuscado, player->nomeClube)){
-                        contadorDeFit++;
-                    }
+                    if(player->nomeClube!=NULL)
+                        if(strcmp(clubeBuscado, player->nomeClube)==0)
+                            contadorDeFit++;
+                        
                     neededFit++;
                 }
 
 
                 if(neededFit==contadorDeFit){
+                    EXIST=1;
                     imprimePlayerData(player);
                     if(idBuscado!=-1){          // como so há 1 id para cada se o jogador com o id foi encontrado fim-se
                         if (player->nomeJogador != NULL)
@@ -356,6 +380,11 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                 player->nacionalidade = NULL;
                 player->nomeClube = NULL;
                 
+            }
+               
+
+            if(!EXIST){
+                printf("Registro inexistente.\n\n");
             }
             free(player);
             fclose(bin);

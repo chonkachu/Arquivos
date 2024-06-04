@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
@@ -87,7 +88,6 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
             }
             else{
                 setId(registro, atoi(str));
-                
                 free(str);
             }
         }
@@ -185,7 +185,7 @@ int create_index(char* bin_name, char* index_bin_name){
         if(status == '1'){
             int tamReg=0;        // o registro esta logicamente removido portanto vamos pular o registro inteiro
             fread(&tamReg, 4, 1, bin);
-            fseek(bin, tamReg-5, SEEK_CUR);
+     fseek(bin, tamReg-5, SEEK_CUR);
             continue;
         }
 
@@ -697,7 +697,139 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
 }
 
 void insert_into(char* bin_name, char* index_bin_name, int n){
+    parametrosDeBusca parametros[1024]; // vetor que ira armazenar as especificaçoes de cada busca para lermos primeiro a entrada e somente depois imprimir
+    int tamRegistros[1024];
 
+    for (int i = 0; i < n; i++) {
+        parametros[i].id = -1;
+        parametros[i].idade = -1;
+        parametros[i].nacionalidade[0] = '\0';
+        parametros[i].clube[0] = '\0';
+        parametros[i].nome[0] = '\0';
+
+        scanf("%d", &parametros[i].id);
+        scanf("%d", &parametros[i].idade);
+        scan_quote_string(parametros[i].nacionalidade);
+        scan_quote_string(parametros[i].nome);
+        scan_quote_string(parametros[i].clube);
+        tamRegistros[i] = 33 + strlen(parametros[i].nome)
+                             + strlen(parametros[i].nacionalidade)
+                             + strlen(parametros[i].clube);
+    }
+
+    FILE *bin = fopen(bin_name, "rb+");
+    char status;
+
+    fread(&status, 1, 1, bin);
+    if (status == '0') {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+    status = '0'; // status inconsistente
+    fseek(bin, 0, SEEK_SET);
+    fwrite(&status, 1, 1, bin);
+
+    int64_t topo = -1, byteOff = 0;
+    int numRegistros = 0, numRemovidos = 0;
+    fread(&topo, 8, 1, bin);
+    fread(&byteOff, 8, 1, bin);
+    fread(&numRegistros, 4, 1, bin);
+    fread(&numRemovidos, 4, 1, bin);
+
+    if (topo == -1) {
+        fseek(bin, 0, SEEK_END);
+        for (int i = 0; i < n; i++) {
+            char removido = '0';
+            int64_t prox = -1;
+            fwrite(&removido, 1, 1, bin);
+            fwrite(&tamRegistros[i], 4, 1, bin);
+            fwrite(&prox, 8, 1, bin);
+            fwrite(&parametros[i].id, 4, 1, bin);
+            fwrite(&parametros[i].idade, 4, 1, bin);
+            int tamNomeJog = strlen(parametros[i].nome);
+            int tamNacionalidade = strlen(parametros[i].nacionalidade);
+            int tamNomeClube = strlen(parametros[i].clube);
+            fwrite(&tamNomeJog, 4, 1, bin);
+            if (tamNomeJog) fwrite(&parametros[i].nome, 1, tamNomeJog, bin);
+            fwrite(&tamNomeClube, 4, 1, bin);
+            if (tamNomeClube) fwrite(&parametros[i].clube, 1, tamNomeClube, bin);
+            fwrite(&tamNacionalidade, 4, 1, bin);
+            if (tamNacionalidade) fwrite(&parametros[i].nacionalidade, 1, tamNacionalidade, bin);
+        }
+    }
+    else {
+        for (int i = 0; i < n; i++) {
+            fseek(bin, 1, SEEK_SET);
+            int64_t last = 1;
+            fread(&byteOff, 8, 1, bin);
+            int tamReg = 0;
+            int flag = 0; // se conseguimos inserir num campo logicamente removido ou n
+            while (byteOff != -1) {
+                fseek(bin, byteOff+1, SEEK_SET);
+                fread(&tamReg, 4, 1, bin);
+                if (tamRegistros[i] <= tamReg) {
+                    fseek(bin, byteOff, SEEK_SET);
+                    char removido = '0';
+                    int64_t prox = -1, next;
+                    fwrite(&removido, 1, 1, bin);
+                    fwrite(&tamRegistros[i], 4, 1, bin);
+                    fread(&next, 8, 1, bin);
+                    fseek(bin, ftell(bin)-8, SEEK_SET);
+                    fwrite(&prox, 8, 1, bin);
+                    fwrite(&parametros[i].id, 4, 1, bin);
+                    fwrite(&parametros[i].idade, 4, 1, bin);
+                    int tamNomeJog = strlen(parametros[i].nome);
+                    int tamNacionalidade = strlen(parametros[i].nacionalidade);
+                    int tamNomeClube = strlen(parametros[i].clube);
+                    fwrite(&tamNomeJog, 4, 1, bin);
+                    if (tamNomeJog) fwrite(&parametros[i].nome, 1, tamNomeJog, bin);
+                    fwrite(&tamNomeClube, 4, 1, bin);
+                    if (tamNomeClube) fwrite(&parametros[i].clube, 1, tamNomeClube, bin);
+                    fwrite(&tamNacionalidade, 4, 1, bin);
+                    if (tamNacionalidade) fwrite(&parametros[i].nacionalidade, 1, tamNacionalidade, bin);
+
+                    for (int k = 0; k < tamReg - tamRegistros[i]; k++) {
+                        int dollar = '$';
+                        fwrite(&dollar, 1, 1, bin);
+                    }
+                    fseek(bin, last, SEEK_SET);
+                    fwrite(&next, 8, 1, bin);
+
+                    flag = 1;
+                    break;
+                }
+                else {
+                    last = byteOff+5;
+                    fread(&byteOff, 8, 1, bin);
+                }
+           }
+            if (!flag) {
+                fseek(bin, 0, SEEK_END);
+                char removido = '0';
+                int64_t prox = -1;
+                fwrite(&removido, 1, 1, bin);
+                fwrite(&tamRegistros[i], 4, 1, bin);
+                fwrite(&prox, 8, 1, bin);
+                fwrite(&parametros[i].id, 4, 1, bin);
+                fwrite(&parametros[i].idade, 4, 1, bin);
+                int tamNomeJog = strlen(parametros[i].nome);
+                int tamNacionalidade = strlen(parametros[i].nacionalidade);
+                int tamNomeClube = strlen(parametros[i].clube);
+                fwrite(&tamNomeJog, 4, 1, bin);
+                if (tamNomeJog) fwrite(&parametros[i].nome, 1, tamNomeJog, bin);
+                fwrite(&tamNomeClube, 4, 1, bin);
+                if (tamNomeClube) fwrite(&parametros[i].clube, 1, tamNomeClube, bin);
+                fwrite(&tamNacionalidade, 4, 1, bin);
+                if (tamNacionalidade) fwrite(&parametros[i].nacionalidade, 1, tamNacionalidade, bin);
+            }
+        }
+    }
+    fseek(bin, 0, SEEK_SET);
+    status = '1';
+    fwrite(&status, 1, 1, bin);
+    fclose(bin);
+    binarioNaTela(bin_name);
+    create_index(bin_name, index_bin_name);
 }
 
 void imprimePlayerData(player_data *player){            // função que imprime a nacionalidade, nome e clube do jogador
@@ -721,5 +853,4 @@ void imprimePlayerData(player_data *player){            // função que imprime 
     }else{
         printf("%s\n\n", player->nomeClube);
     }
-
 }

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "db.h"
 #include "file_utils.h"
 
 struct header_registry_ {
