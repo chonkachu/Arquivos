@@ -35,7 +35,8 @@ int main() {
         create_index(csv_name, bin_name);            
         
     }else if (op == 5) {            
-        
+        scanf(" %s %s %d", csv_name, bin_name, &num_queries);
+        delete_from_where(csv_name, bin_name, num_queries);
     }else if (op == 6) {    
         
     }

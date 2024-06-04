@@ -4,8 +4,8 @@
 
 // definindo as funcionalidades do banco de dados
 
-typedef struct player_data_ player_data;
 typedef struct parametrosDeBusca_ parametrosDeBusca;
+typedef struct player_data_ player_data;
 
 int create_table(char* csv_name, char* bin_name);
 int create_index(char* bin_name, char* index_bin_name);

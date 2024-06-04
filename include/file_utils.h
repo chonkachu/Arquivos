@@ -40,20 +40,18 @@ void setHeaderTopo(file_object* fileObj, int64_t topo);
 void setHeaderProxByteOffset(file_object* fileObj, int64_t proxByteOffset);
 void setHeaderNroRegArq(file_object* fileObj, int32_t nroRegArq);
 void setHeaderNroRegRem(file_object* fileObj, int32_t nroRegRem);
-
-data_index** criarVetorIndice(int n);
-int32_t getIndiceId(data_index* a);
-int64_t getByteOff(data_index* a);
-void setIndiceId(data_index* a, int32_t id);
-void setIndiceByteOff(data_index* a, int64_t byteOff);
 int comparaIndice(const void *a, const void *b);
 void setHeaderStatusInd(file_object_ind* fileObj, char status);
 void writeRegistroCabecalhoInd(file_object_ind* fileObj);
 void writeRegistroDadosInd(file_object_ind* fileObj, data_index** arr, int i);
+void setIndiceByteOff(data_index* a, int64_t byteOff);
 void fecharArquivoBinInd(file_object_ind** fileObj);
-
+void setIndiceId(data_index* a, int32_t id);
+data_index** criarVetorIndice(int n);
+int64_t indBB(int id, char *bin_name, int nroRegArq);
 file_object_ind* criarArquivoBinInd(char *bin_name);
-void fecharArquivoBinInd(file_object_ind** fileObj);
+int fitted(FILE * bin, int idBuscado, int idadeBuscada, char *nacionalidadeBuscada, char *nomeBuscado, char *clubeBuscado);
+
 
 void binarioNaTela(char *nomeArquivoBinario);
 void scan_quote_string(char *str);
