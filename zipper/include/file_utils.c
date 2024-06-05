@@ -2,53 +2,52 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "db.h"
 #include "file_utils.h"
 
 struct header_registry_ {
-    char status;
-    int64_t topo;
-    int64_t proxByteOffset;
-    int32_t nroRegArq;
-    int32_t nroRegRem;
+    char status;        // status do arquivo para saber se ele esta consistente
+    int64_t topo;           // byteOff do ultimo registro removido
+    int64_t proxByteOffset;         // primeiro byte depois do fim dos registros
+    int32_t nroRegArq;          // a quantidade de registros
+    int32_t nroRegRem;          // numero de registros removidos
+};
+
+struct header_index_{
+    char status;        // status do arquivo para saber se ele esta consistente
 };
 
 struct data_registry_ {
-    char removido;
-    int32_t tamanhoRegistro;
-    int64_t prox;
-    int32_t id;
-    int32_t idade;
-    int32_t tamNomeJog;
-    int32_t tamNacionalidade;
-    int32_t tamNomeClube;
-    char *nomeJogador;
-    char *nacionalidade;
-    char *nomeClube;
+    char removido; // byte que sinaliza que o registro está removido
+    int32_t tamanhoRegistro; // tamanho do registro de dados
+    int64_t prox; // byteoffset do proximo elemento removido
+    int32_t id; // campo id do registro de dados
+    int32_t idade; // campo idade do registro de dados
+    int32_t tamNomeJog; // campo de tamanho do nome do jogador do registro de dados
+    int32_t tamNacionalidade; // campo de tamanho da nacionalidade do registro de dados
+    int32_t tamNomeClube; // campo de tamanho do nome do clube do registro de dados
+    char *nomeJogador; // campo de nome do jogador do registro de dados
+    char *nacionalidade; // campo de nacionalidade do registro de dados
+    char *nomeClube; // campo de nome do clube do registro de dados
 };
 
+struct data_index_ {
+    int32_t id;          // id do campo
+    int64_t byteOffset;  // byteoffset do campo
+};
+
+// estrutura que guarda o ponteiro para o arquivo e o registro de cabeçalho do arquivo
 struct file_object_ {
     header_registry *header;
     FILE *file;
     int32_t fileIndex;
 };
+struct file_object_ind_ {
+    header_index *header;
+    FILE *file;
+};
 
-// file_object* abrirArquivoBin(char *bin_name){
-//     file_object *fileObj = (file_object*) malloc(sizeof(file_object));
-//     header_registry *header = (header_registry*) malloc(sizeof(header_registry));
-//     FILE* bin = fopen(bin_name, "rb");
-//     fileObj->header = header;
-//     fread(&fileObj->header->status, 1, 1, fileObj->file);
-//     fread(&fileObj->header->topo, 8, 1, fileObj->file);
-//     fread(&fileObj->header->proxByteOffset, 8, 1, fileObj->file);
-//     fread(&fileObj->header->nroRegArq, 4, 1, fileObj->file);
-//     fread(&fileObj->header->nroRegRem, 4, 1, fileObj->file);
-//     fseek(&fileObj->file, 0, SEEK_SET);
-//     fileObj->file = bin;
-//     fileObj->fileIndex = 0;
-    
-//     return fileObj;
-// }
-
+// função que inicializa a estrutura de dados file_object
 file_object* criarArquivoBin(char *bin_name){
     file_object *fileObj = (file_object*) malloc(sizeof(file_object));
     header_registry *header = (header_registry*) malloc(sizeof(header_registry));
@@ -60,6 +59,103 @@ file_object* criarArquivoBin(char *bin_name){
     return fileObj;
 }
 
+file_object_ind* criarArquivoBinInd(char *bin_name){
+    file_object_ind *fileObj = (file_object_ind*) malloc(sizeof(file_object_ind));
+    header_index *header = (header_index*) malloc(sizeof(header_index));
+    FILE* bin = fopen(bin_name, "wb+");
+    fileObj->header = header;
+    fileObj->file = bin;
+    
+    return fileObj;
+}
+
+data_index** criarVetorIndice(int n){
+    data_index **arr = (data_index**)malloc(sizeof(data_index*)*n);
+    for(int i=0;i<n;i++){
+        arr[i]=(data_index*)malloc(sizeof(data_index));
+        arr[i]->id=0x7ffffff;
+        arr[i]->byteOffset=-1;
+    }
+    return arr;
+}
+int32_t getIndiceId(data_index* a){
+    return a->id;
+}
+int64_t getByteOff(data_index* a){
+    return a->byteOffset;
+}
+void setIndiceId(data_index* a, int32_t id){
+    a->id = id;
+}
+void setIndiceByteOff(data_index* a, int64_t byteOff){
+    a->byteOffset = byteOff;
+}
+int comparaIndice(const void *a, const void *b) {
+    const data_index *da = *(const data_index **)a;
+    const data_index *db = *(const data_index **)b;
+    
+    if (da->id < db->id) return -1;
+    if (da->id > db->id) return 1;
+    return 0;
+}
+void setHeaderStatusInd(file_object_ind* fileObj, char status){
+    fileObj->header->status = status;
+}
+void writeRegistroCabecalhoInd(file_object_ind* fileObj){
+    fseek(fileObj->file, 0, SEEK_SET);
+    fwrite(&fileObj->header->status, 1, 1, fileObj->file);
+    fseek(fileObj->file, 0, SEEK_END);
+}
+void writeRegistroDadosInd(file_object_ind* fileObj, data_index** arr, int i){
+    for(int k=0;k<i;k++){
+        fwrite(&arr[k]->id, 4, 1, fileObj->file);
+        fwrite(&arr[k]->byteOffset, 8, 1, fileObj->file);
+    }
+}
+void fecharArquivoBinInd(file_object_ind** fileObj){
+    fclose((*fileObj)->file);
+    free((*fileObj)->header);
+    free(*fileObj);
+    *fileObj = NULL;
+}
+int64_t indBB(int id, char *bin_name, int nroRegArq){
+    int ini=1;
+    int fim=nroRegArq;
+
+    FILE *bin = fopen(bin_name, "rb");
+
+    char stats;
+        fread(&stats, 1, 1, bin);
+
+        if (stats == '0')
+        {
+            printf("Falha no processamento do arquivo.\n");
+            return -2;
+        }
+
+    while(ini<=fim){
+        int meio=(ini+fim)/2;
+
+        fseek(bin, 12*(meio-1)+1, SEEK_SET);
+        int idfound;
+        fread(&idfound, 4, 1, bin);
+        if(idfound==id){
+            int64_t byte;
+            fread(&byte, 8, 1, bin);
+            fclose(bin);
+            return byte;
+        }else if(idfound<id){
+            ini=meio+1;
+        }else{
+            fim=meio-1;
+        }
+    }
+
+    fclose(bin);
+    return -1;
+    
+}
+// função que inicializa os registros de dados
 data_registry* criarRegistro() {
     data_registry *registro = (data_registry*) malloc(sizeof(data_registry));
     registro->nacionalidade = NULL;
@@ -68,7 +164,8 @@ data_registry* criarRegistro() {
 
     return registro;
 }
-// supondo que o indice do arquivo ta onde a gnt precisa
+
+// função que escreve os registros de dados no arquivo binario
 void writeRegistroDados(file_object* fileObj, data_registry* registro) {
     fwrite(&registro->removido, 1, 1, fileObj->file);
     fwrite(&registro->tamanhoRegistro, 4, 1, fileObj->file);
@@ -85,6 +182,7 @@ void writeRegistroDados(file_object* fileObj, data_registry* registro) {
     if (registro->nomeClube != NULL)
         fwrite(registro->nomeClube, 1, registro->tamNomeClube, fileObj->file);
 }
+// função que escreve o registro de cabeçalho no arquivo binario
 void writeRegistroCabecalho(file_object* fileObj) {
     fseek(fileObj->file, 0, SEEK_SET);
     fwrite(&fileObj->header->status, 1, 1, fileObj->file);
@@ -95,6 +193,7 @@ void writeRegistroCabecalho(file_object* fileObj) {
     fseek(fileObj->file, 0, SEEK_END);
 }
 
+// função que libera memoria dos registros
 void liberarRegistro(data_registry **registro) {
     if ((*registro)->nomeJogador != NULL)
         free((*registro)->nomeJogador);
@@ -106,6 +205,7 @@ void liberarRegistro(data_registry **registro) {
     *registro = NULL;
 }
 
+// função que fecha o arquivo e libera memoria do registro de cabeçalho
 void fecharArquivoBin(file_object** fileObj) {
     fclose((*fileObj)->file);
     free((*fileObj)->header);
@@ -113,77 +213,81 @@ void fecharArquivoBin(file_object** fileObj) {
     *fileObj = NULL;
 }
 
+// getter do tamanho nacionalidade do registro de dados
 int getTamNacionalidade(data_registry *registro) {
     return registro->tamNacionalidade;
 }
+// getter do tamanho nome clube do registro de dados
 int getTamNomeClube(data_registry *registro) {
     return registro->tamNomeClube;
 }
+// getter do tamanho nome jogador do registro de dados
 int getTamNomeJogador(data_registry *registro) {
     return registro->tamNomeJog;
 }
-
+// setter do campo id do registro de dados
 void setId(data_registry* registro, int id){
     registro->id = id;
 }
-
+// setter do campo idade do registro de dados
 void setIdade(data_registry* registro, int idade){
     registro->idade = idade;
 }
-
+// setter do campo tamanho nome jogador do registro de dados
 void setTamNomeJogador(data_registry* registro, int tam){
     registro->tamNomeJog = tam;
 }
+// setter do campo nome jogador do registro de dados
 void setNomeJogador(data_registry* registro, char* nomeJogador){
     if (registro->nomeJogador != NULL)
         free(registro->nomeJogador);
     registro->nomeJogador = nomeJogador;
 }
 
-void setTamNacionalidade(data_registry* registro, int tam){
+void setTamNacionalidade(data_registry* registro, int tam){         // define o tamanho da string da nacionalidade
     registro->tamNacionalidade = tam;
 }
-void setNacionalidade(data_registry* registro, char* nacionalidade){
+void setNacionalidade(data_registry* registro, char* nacionalidade){         // define a nacionalidade do registro caso haja
     if (registro->nacionalidade != NULL)
         free(registro->nacionalidade);
     registro->nacionalidade = nacionalidade;
 }
 
-void setTamNomeClube(data_registry* registro, int tam){
+void setTamNomeClube(data_registry* registro, int tam){         // define o tamanho do nome do clube 
     registro->tamNomeClube = tam;
 }
 
-void setNomeClube(data_registry* registro, char* nomeClube){
+void setNomeClube(data_registry* registro, char* nomeClube){         // define o nome do clube do registro
     if (registro->nomeClube != NULL)
         free(registro->nomeClube);
     registro->nomeClube = nomeClube;
 }
 
-void setProx(data_registry* registro, int index){
+void setProx(data_registry* registro, int index){         // define o proximo 
     registro->prox = index;
 }
 
-void setRemovido(data_registry* registro, int op){
+void setRemovido(data_registry* registro, int op){         // define logicamente se o registro foi removido
     registro->removido = op; 
 }
 
-void setTamanhoRegistro(data_registry* registro, int tam){
+void setTamanhoRegistro(data_registry* registro, int tam){         // define o tamanho do registro
     registro->tamanhoRegistro = tam;
 }
 
-void setHeaderStatus(file_object* fileObj, char status){
+void setHeaderStatus(file_object* fileObj, char status){         // define o status do arquivo
     fileObj->header->status = status;
 }
-void setHeaderTopo(file_object* fileObj, int64_t topo){
+void setHeaderTopo(file_object* fileObj, int64_t topo){         // define o topo
     fileObj->header->topo = topo;
 }
-void setHeaderProxByteOffset(file_object* fileObj, int64_t proxByteOffset){
+void setHeaderProxByteOffset(file_object* fileObj, int64_t proxByteOffset){         //  define o byteoffset
     fileObj->header->proxByteOffset = proxByteOffset;
 }
-void setHeaderNroRegArq(file_object* fileObj, int32_t nroRegArq){
+void setHeaderNroRegArq(file_object* fileObj, int32_t nroRegArq){           // funçao para definir o numero de registros que nao foram removidos
     fileObj->header->nroRegArq = nroRegArq;
 }
-void setHeaderNroRegRem(file_object* fileObj, int32_t nroRegRem){
+void setHeaderNroRegRem(file_object* fileObj, int32_t nroRegRem){           // funçao para definir o numero de registros removidos no arquivo
     fileObj->header->nroRegRem = nroRegRem;
 }
 void binarioNaTela(char *nomeArquivoBinario) { /* Você não precisa entender o código dessa função. */
@@ -247,4 +351,103 @@ void scan_quote_string(char *str) {
 	} else { // EOF
 		strcpy(str, "");
 	}
+}
+
+int fitted(FILE * bin, int idBuscado, int idadeBuscada, char *nacionalidadeBuscada, char *nomeBuscado, char *clubeBuscado){
+            char a = getc(bin); // auxilia para saber se chegamos em EOF ou se foi logicamente removido
+            if (a == EOF)
+                return -1;
+            if (a == '1')
+            { 
+                int tamReg=0;
+                fread(&tamReg, 4, 1, bin);
+                fseek(bin, tamReg-5, SEEK_CUR);  
+                return 0;
+            }
+
+            fseek(bin, 12, SEEK_CUR); // skippa tamreg e prox
+
+            int id = -1;    // id lido do registro atual
+            int idade = -1; // idade lida do registro atual
+
+            fread(&id, 4, 1, bin);
+            fread(&idade, 4, 1, bin);
+
+
+            char *nomeJogador = NULL;
+            char *nacionalidade = NULL;
+            char *nomeClube = NULL;
+            int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0; // armazenaram respectivamente tamanho da string de nacionalidade, nome do jogador e nome do clube do registro atual
+
+            fread(&tamNomeJog, 4, 1, bin);
+            if (tamNomeJog != 0)
+            {
+                nomeJogador = (char *)malloc((tamNomeJog + 1) * sizeof(char));
+                fread(nomeJogador, 1, tamNomeJog, bin);
+                nomeJogador[tamNomeJog] = '\0';
+            }
+            fread(&tamNacionalidade, 4, 1, bin);
+            if (tamNacionalidade != 0)
+            {
+                nacionalidade = (char *)malloc((tamNacionalidade + 1) * sizeof(char));
+                fread(nacionalidade, 1, tamNacionalidade, bin);
+                nacionalidade[tamNacionalidade] = '\0';
+            }
+            fread(&tamNomeClube, 4, 1, bin);
+            if (tamNomeClube != 0)
+            {
+                nomeClube = (char *)malloc((tamNomeClube + 1) * sizeof(char));
+                fread(nomeClube, 1, tamNomeClube, bin);
+                nomeClube[tamNomeClube] = '\0';
+
+            } // fim da montagem
+
+            int contadorDeFit = 0; // contador para saber se o registro possui todos os campos que estao sendo procurados
+            int neededFit = 0;     // a quantidade de campos necessarias;
+            if (idadeBuscada != -1)
+            {
+                if (idadeBuscada == idade)
+                {
+                    contadorDeFit++;
+                }
+                neededFit++;
+            }
+            if (idBuscado != -1)
+            {
+                if (idBuscado == id)
+                {
+                    contadorDeFit++;
+                }
+                neededFit++;
+            }
+            if (strlen(nacionalidadeBuscada) > 0)
+            {
+                if (nacionalidade != NULL)
+                    if (strcmp(nacionalidadeBuscada, nacionalidade) == 0)
+                        contadorDeFit++;
+
+                neededFit++;
+            }
+            if (strlen(nomeBuscado) > 0)
+            {
+                if (nomeJogador != NULL)
+                    if (strcmp(nomeBuscado, nomeJogador) == 0)
+                        contadorDeFit++;
+
+                neededFit++;
+            }
+            if (strlen(clubeBuscado) > 0)
+            {
+                if (nomeClube != NULL)
+                    if (strcmp(clubeBuscado, nomeClube) == 0)
+                        contadorDeFit++;
+
+                neededFit++;
+            }
+
+            if(neededFit==contadorDeFit){
+                return 1;
+            }
+
+            return 0;
 }

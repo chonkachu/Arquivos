@@ -707,10 +707,13 @@ void insert_into(char* bin_name, char* index_bin_name, int n){
         parametros[i].clube[0] = '\0';
         parametros[i].nome[0] = '\0';
 
+        char temp_idade[50];
         scanf("%d", &parametros[i].id);
-        scanf("%d", &parametros[i].idade);
-        scan_quote_string(parametros[i].nacionalidade);
+        scan_quote_string(temp_idade);
+        if(temp_idade[0] != '\0')
+            parametros[i].idade = atoi(temp_idade);
         scan_quote_string(parametros[i].nome);
+        scan_quote_string(parametros[i].nacionalidade);
         scan_quote_string(parametros[i].clube);
         tamRegistros[i] = 33 + strlen(parametros[i].nome)
                              + strlen(parametros[i].nacionalidade)
@@ -732,12 +735,17 @@ void insert_into(char* bin_name, char* index_bin_name, int n){
     int64_t topo = -1, byteOff = 0;
     int numRegistros = 0, numRemovidos = 0;
     fread(&topo, 8, 1, bin);
-    fread(&byteOff, 8, 1, bin);
+    int64_t fim = 0;
+    fread(&fim, 8, 1, bin);
+    printf("fim do arq: %ld\n", fim);
     fread(&numRegistros, 4, 1, bin);
     fread(&numRemovidos, 4, 1, bin);
+    printf("num reg: %d\n", numRegistros);
+    printf("num removido: %d\n", numRemovidos);
 
     if (topo == -1) {
         fseek(bin, 0, SEEK_END);
+        printf(" fim do arq: %ld", ftell(bin));
         for (int i = 0; i < n; i++) {
             char removido = '0';
             int64_t prox = -1;
@@ -749,12 +757,16 @@ void insert_into(char* bin_name, char* index_bin_name, int n){
             int tamNomeJog = strlen(parametros[i].nome);
             int tamNacionalidade = strlen(parametros[i].nacionalidade);
             int tamNomeClube = strlen(parametros[i].clube);
+
+            printf("tamanho: %d\n", 33+tamNomeJog+tamNomeClube+tamNacionalidade);
+            printf("%s, %s, %s", parametros[i].nome, parametros[i].nacionalidade, parametros[i].clube);
             fwrite(&tamNomeJog, 4, 1, bin);
-            if (tamNomeJog) fwrite(&parametros[i].nome, 1, tamNomeJog, bin);
-            fwrite(&tamNomeClube, 4, 1, bin);
-            if (tamNomeClube) fwrite(&parametros[i].clube, 1, tamNomeClube, bin);
+            if (tamNomeJog) fwrite(parametros[i].nome, 1, tamNomeJog, bin);
             fwrite(&tamNacionalidade, 4, 1, bin);
-            if (tamNacionalidade) fwrite(&parametros[i].nacionalidade, 1, tamNacionalidade, bin);
+            if (tamNacionalidade) fwrite(parametros[i].nacionalidade, 1, tamNacionalidade, bin);
+            fwrite(&tamNomeClube, 4, 1, bin);
+            if (tamNomeClube) fwrite(parametros[i].clube, 1, tamNomeClube, bin);
+            numRegistros++;
         }
     }
     else {
@@ -762,47 +774,56 @@ void insert_into(char* bin_name, char* index_bin_name, int n){
             fseek(bin, 1, SEEK_SET);
             int64_t last = 1;
             fread(&byteOff, 8, 1, bin);
+            printf("byteoff eh : %ld last eh : %ld\n", byteOff, last);
             int tamReg = 0;
             int flag = 0; // se conseguimos inserir num campo logicamente removido ou n
             while (byteOff != -1) {
                 fseek(bin, byteOff+1, SEEK_SET);
                 fread(&tamReg, 4, 1, bin);
                 if (tamRegistros[i] <= tamReg) {
+                    printf("achou");
                     fseek(bin, byteOff, SEEK_SET);
                     char removido = '0';
-                    int64_t prox = -1, next;
+                    int64_t prox = -1, next = -1;
                     fwrite(&removido, 1, 1, bin);
-                    fwrite(&tamRegistros[i], 4, 1, bin);
+                    printf("eu to aqui: %ld\n", ftell(bin));
+                    printf("tamRegistros: %d\n", tamRegistros[i]);
+                    fwrite(&tamReg, 4, 1, bin);
                     fread(&next, 8, 1, bin);
                     fseek(bin, ftell(bin)-8, SEEK_SET);
+                    printf("next eh %ld", next);
                     fwrite(&prox, 8, 1, bin);
                     fwrite(&parametros[i].id, 4, 1, bin);
                     fwrite(&parametros[i].idade, 4, 1, bin);
                     int tamNomeJog = strlen(parametros[i].nome);
                     int tamNacionalidade = strlen(parametros[i].nacionalidade);
                     int tamNomeClube = strlen(parametros[i].clube);
+                    printf("%s tam: %d %s tam: %d %s tam: %d\n", parametros[i].nome, tamNomeJog, parametros[i].nacionalidade, tamNacionalidade, parametros[i].clube, tamNomeClube);
                     fwrite(&tamNomeJog, 4, 1, bin);
-                    if (tamNomeJog) fwrite(&parametros[i].nome, 1, tamNomeJog, bin);
-                    fwrite(&tamNomeClube, 4, 1, bin);
-                    if (tamNomeClube) fwrite(&parametros[i].clube, 1, tamNomeClube, bin);
+                    if (tamNomeJog) fwrite(parametros[i].nome, 1, tamNomeJog, bin);
                     fwrite(&tamNacionalidade, 4, 1, bin);
-                    if (tamNacionalidade) fwrite(&parametros[i].nacionalidade, 1, tamNacionalidade, bin);
+                    if (tamNacionalidade) fwrite(parametros[i].nacionalidade, 1, tamNacionalidade, bin);
+                    fwrite(&tamNomeClube, 4, 1, bin);
+                    if (tamNomeClube) fwrite(parametros[i].clube, 1, tamNomeClube, bin);
 
                     for (int k = 0; k < tamReg - tamRegistros[i]; k++) {
-                        int dollar = '$';
+                        char dollar = '$';
                         fwrite(&dollar, 1, 1, bin);
                     }
                     fseek(bin, last, SEEK_SET);
+                    printf("vou mandar %ld pra %ld\n", last, next);
                     fwrite(&next, 8, 1, bin);
 
+                    numRemovidos--;
                     flag = 1;
                     break;
                 }
                 else {
                     last = byteOff+5;
                     fread(&byteOff, 8, 1, bin);
+                    printf("byteoff eh : %ld last eh : %ld\n", byteOff, last);
                 }
-           }
+            }
             if (!flag) {
                 fseek(bin, 0, SEEK_END);
                 char removido = '0';
@@ -816,17 +837,30 @@ void insert_into(char* bin_name, char* index_bin_name, int n){
                 int tamNacionalidade = strlen(parametros[i].nacionalidade);
                 int tamNomeClube = strlen(parametros[i].clube);
                 fwrite(&tamNomeJog, 4, 1, bin);
-                if (tamNomeJog) fwrite(&parametros[i].nome, 1, tamNomeJog, bin);
-                fwrite(&tamNomeClube, 4, 1, bin);
-                if (tamNomeClube) fwrite(&parametros[i].clube, 1, tamNomeClube, bin);
+                if (tamNomeJog) fwrite(parametros[i].nome, 1, tamNomeJog, bin);
                 fwrite(&tamNacionalidade, 4, 1, bin);
-                if (tamNacionalidade) fwrite(&parametros[i].nacionalidade, 1, tamNacionalidade, bin);
+                if (tamNacionalidade) fwrite(parametros[i].nacionalidade, 1, tamNacionalidade, bin);
+                fwrite(&tamNomeClube, 4, 1, bin);
+                if (tamNomeClube) fwrite(parametros[i].clube, 1, tamNomeClube, bin);
             }
+            numRegistros++;
         }
     }
+    fseek(bin, 0, SEEK_END);
+    int64_t fimDoArq = ftell(bin);
+    printf("novo fim: %ld\n", fimDoArq);
     fseek(bin, 0, SEEK_SET);
     status = '1';
     fwrite(&status, 1, 1, bin);
+    int64_t teste = 0;
+    fread(&teste, 8, 1, bin);
+    printf("topo: %ld\n", teste);
+    //fseek(bin, 8, SEEK_CUR);
+    fwrite(&fimDoArq, 8, 1, bin);
+    fwrite(&numRegistros, 4, 1, bin);
+    fwrite(&numRemovidos, 4, 1, bin);
+    printf("num reg final: %d\n", numRegistros);
+    printf("num removidos final: %d\n", numRemovidos);
     fclose(bin);
     binarioNaTela(bin_name);
     create_index(bin_name, index_bin_name);

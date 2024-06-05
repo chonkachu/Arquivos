@@ -1,4 +1,4 @@
-CFLAGS=-O2 -Iinclude/ -Wall -Wextra -Wno-unused-result
+CFLAGS=-O2 -Wall -Iinclude/ -Wno-unused-result
 CC=gcc
 LIBOBJS=$(patsubst %.c,%.o,$(wildcard include/*.c))
 OBJSLOCAL=$(patsubst include/%.o, %.o, $(LIBOBJS))
