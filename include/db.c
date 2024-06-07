@@ -5,12 +5,6 @@
 #include "db.h"
 #include "file_utils.h"
 
-struct player_data_ {           // estrutura para auxiliar na impressão do jogador
-    char *nomeJogador;            // armazena o nome do jogador caso ou caso tenha
-    char *nacionalidade;            // armazena a nacionalidade 
-    char *nomeClube;            // armazena nome do clube
-};
-
 struct parametrosDeBusca_{            // estrututura que armazenos os parametros buscado em cada busca
     int id;            // armazena o id buscado
     int idade;            // armazena a idade buscada
@@ -35,7 +29,7 @@ int comparaPair(const void* a, const void* b) {
 int create_table(char* csv_name, char* bin_name){            // funçao que transforma o arquivo csv em binario (operação 1)
     FILE* csv_file = fopen(csv_name, "r");            // abre o arquivo csv
     for (char c = getc(csv_file); c != '\n'; c = getc(csv_file));
-    file_object* fileObj = criarArquivoBin(bin_name);            // cria o arquivo bin
+    file_object* fileObj = criarArquivoBin(bin_name, "wb+");            // cria o arquivo bin
     setHeaderStatus(fileObj, '0');
     setHeaderTopo(fileObj, -1);
     setHeaderProxByteOffset(fileObj, 0);
@@ -185,7 +179,7 @@ int create_index(char* bin_name, char* index_bin_name){
         if(status == '1'){
             int tamReg=0;        // o registro esta logicamente removido portanto vamos pular o registro inteiro
             fread(&tamReg, 4, 1, bin);
-     fseek(bin, tamReg-5, SEEK_CUR);
+            fseek(bin, tamReg-5, SEEK_CUR);
             continue;
         }
 
@@ -217,78 +211,27 @@ int create_index(char* bin_name, char* index_bin_name){
     return 1;
 }
 
-void select_from(char* bin_name){            // função que imprime os registros do arquivo binario na forma pedida (operação 2)
-    FILE *bin = fopen(bin_name, "rb");             // abre o arquivo binario
+void select_from(char* bin_name){  
+    file_object *bin = criarArquivoBin(bin_name, "rb");          // função que imprime os registros do arquivo binario na forma pedida (operação 2)
+    //FILE *bin = fopen(bin_name, "rb");             // abre o arquivo binario
     
-    if(bin==NULL){
-        printf("Falha no processamento do arquivo.\n");
-        return;
-    }
-  char stats;
-    fread(&stats, 1, 1, bin);
+    if(!verificaConsistencia(bin)) return;
 
-    if(stats=='0'){
-        printf("Falha no processamento do arquivo.\n");
-        return;
-    }
-
-    fseek(bin, 24, SEEK_CUR);            
-
-    player_data* player = (player_data*) malloc(sizeof(player_data));            // auxilia na modularizaçao para imprimir cada jogador 
-        player->nomeJogador = NULL;
-        player->nacionalidade = NULL;
-        player->nomeClube = NULL;
+    inicioRegistroDeDados(bin);
 
     int EXIST=0;            // variavel para auxiliar em caso de registro inexistente
 
+    player_data *player = criarPlayer();
+
     while(1){
-        char a = getc(bin);        // necessario para verificar se chegamos em EOF    
-        if (a == EOF)
-            break;
-            
-        if(a=='1'){
-            int tamReg=0;        // o registro esta logicamente removido portanto vamos pular o registro inteiro
-            fread(&tamReg, 4, 1, bin);
-            fseek(bin, tamReg-5, SEEK_CUR);
-            continue;
-        }
-        fseek(bin, 20, SEEK_CUR);        // pulamos direto para os campos de tamanho variavel pois sao os que serão impressos
-        int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0;        // armazenaram respectivamente tamanho da string de nacionalidade, nome do jogador e nome do clube
-        fread(&tamNomeJog, 4, 1, bin);
+        int r=processaRegistro(bin, player);
+        if(r==-1) break;
         
-        if (tamNomeJog != 0) {          // aloca 
-            player->nomeJogador = (char*) malloc((tamNomeJog+1)*sizeof(char));
-            fread(player->nomeJogador, 1, tamNomeJog, bin);
-            player->nomeJogador[tamNomeJog] = '\0';
+        if(r==1){
+            imprimePlayerData(player);
+        liberaPlayer(player);
+        EXIST = 1;
         }
-            
-        fread(&tamNacionalidade, 4, 1, bin);
-        
-        if (tamNacionalidade != 0){
-            player->nacionalidade = (char*) malloc((tamNacionalidade+1)*sizeof(char));
-            fread(player->nacionalidade, 1, tamNacionalidade, bin);
-            player->nacionalidade[tamNacionalidade] = '\0';
-
-        }
-        fread(&tamNomeClube, 4, 1, bin);
-        
-        if (tamNomeClube != 0) {
-            player->nomeClube = (char*) malloc((tamNomeClube+1)*sizeof(char));
-            fread(player->nomeClube, 1, tamNomeClube, bin);
-            player->nomeClube[tamNomeClube] = '\0';
-
-        }
-        imprimePlayerData(player);
-        EXIST=1;
-        if (player->nomeJogador != NULL)
-            free(player->nomeJogador);
-        if (player->nacionalidade != NULL)
-            free(player->nacionalidade);
-        if (player->nomeClube != NULL)
-            free(player->nomeClube);
-        player->nomeJogador = NULL;
-        player->nacionalidade = NULL;
-        player->nomeClube = NULL;
     }
 
     if(!EXIST){
@@ -296,197 +239,51 @@ void select_from(char* bin_name){            // função que imprime os registro
     }
 
     free(player);
-    fclose(bin);
+    fecharArquivoBin(&bin);
 }
 
 void select_from_where(char *bin_name, int num_queries){        // função que imprime os registros especificos de cada busca do arquivo binario na forma pedida (operação 3)
-        parametrosDeBusca parametros[1024];        // vetor que ira armazenar as especificaçoes de cada busca para lermos primeiro a entrada e somente depois imprimir
-        int num_fields;        // quantidade de campos que sao requisitados na busca
-        char field_name[20];        // para ler o nome do campo
+        player_data * parametros[1024];        // vetor que ira armazenar as especificaçoes de cada busca para lermos primeiro a entrada e somente depois imprimir
+
 
         for(int i=0;i<num_queries;i++){
-            parametros[i].id=-1;
-            parametros[i].idade=-1;
-            parametros[i].nacionalidade[0]='\0';
-            parametros[i].clube[0]='\0';
-            parametros[i].nome[0]='\0';
-
-            scanf("%d", &num_fields); 
-            for (int j = 0; j < num_fields; j++) {
-                scanf("%s", field_name);
-                if (strcmp(field_name, "id") == 0) {
-                    scanf("%d", &parametros[i].id);
-                }
-                else if (strcmp(field_name, "idade") == 0) {
-                    scanf("%d", &parametros[i].idade);
-                }
-                else if (strcmp(field_name, "nacionalidade") == 0) {
-                    scan_quote_string(parametros[i].nacionalidade);
-                }
-                else if (strcmp(field_name, "nomeJogador") == 0) {
-                    scan_quote_string(parametros[i].nome);
-                }
-                else if (strcmp(field_name, "nomeClube") == 0) {
-                     scan_quote_string(parametros[i].clube);
-                }
-            }
+            parametros[i] = lePlayerData();
         }           // Fim da computação da entrada
 
         // inicio da operação
+        file_object *bin = criarArquivoBin(bin_name, "rb");
+        if (!verificaConsistencia(bin)) return;
 
         for(int i=0;i<num_queries;i++){             // LOOP DAS BUSCAS
             int EXIST=0;            // variavel que auxilia em caso de registro inexistente
-            FILE *bin = fopen(bin_name, "rb");          // abre o arquivo binario
+            inicioRegistroDeDados(bin); 
 
-            if(bin==NULL){
-                printf("Falha no processamento do arquivo.\n");
-                return;
-            }
+            printf("Busca %d\n\n", i+1);            
 
-            char stats;
-    fread(&stats, 1, 1, bin);
-
-    if(stats=='0'){
-        printf("Falha no processamento do arquivo.\n");
-        return;
-    }
-
-    fseek(bin, 24, SEEK_CUR); 
-
-            printf("Busca %d\n\n", i+1);
-
-            int idBuscado=parametros[i].id;         // o id buscado
-            int idadeBuscada=parametros[i].idade;       // a idade buscada
-            char* nacionalidadeBuscada=parametros[i].nacionalidade;         // a nacionalidade
-            char* nomeBuscado=parametros[i].nome;         // nome
-            char* clubeBuscado=parametros[i].clube;         // clube
-
-            
-
-            player_data* player = (player_data*) malloc(sizeof(player_data)); 
-                player->nomeJogador = NULL;
-                player->nacionalidade = NULL;
-                player->nomeClube = NULL;
-                
-            while(1){           // COMEÇAMOS A LER O ARQUIVO BINARIO
-                char a = getc(bin);         // auxilia para saber se chegamos em EOF ou se foi logicamente removido
-                if (a == EOF)
-                    break;
-                if(a=='1'){
-                    int tamReg=0;
-                    fread(&tamReg, 4, 1, bin);
-                    fseek(bin, tamReg-5, SEEK_CUR);
-                    continue;
-                }
-
-                fseek(bin, 12, SEEK_CUR); // skippa tamreg e prox
-
-                int id=-1;          // id lido do registro atual
-                int idade=-1;          // idade lida do registro atual
-
-                fread(&id, 4, 1, bin);
-                fread(&idade, 4, 1, bin);
-
-                int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0;         // armazenaram respectivamente tamanho da string de nacionalidade, nome do jogador e nome do clube do registro atual
-                fread(&tamNomeJog, 4, 1, bin);
-
-                //montamos o player atual
-
-                if (tamNomeJog != 0) {          
-                    player->nomeJogador = (char*) malloc((tamNomeJog+1)*sizeof(char));
-                    fread(player->nomeJogador, 1, tamNomeJog, bin);
-                    player->nomeJogador[tamNomeJog] = '\0';
-                }
-
-                fread(&tamNacionalidade, 4, 1, bin);
-                if (tamNacionalidade != 0){
-                    player->nacionalidade = (char*) malloc((tamNacionalidade+1)*sizeof(char));
-                    fread(player->nacionalidade, 1, tamNacionalidade, bin);
-                    player->nacionalidade[tamNacionalidade] = '\0';
-
-                }
-                fread(&tamNomeClube, 4, 1, bin);
-                if (tamNomeClube != 0) {
-                    player->nomeClube = (char*) malloc((tamNomeClube+1)*sizeof(char));
-                    fread(player->nomeClube, 1, tamNomeClube, bin);
-                    player->nomeClube[tamNomeClube] = '\0';
-
-                } // fim da montagem
-
-                
-                int contadorDeFit=0;            // contador para saber se o registro possui todos os campos que estao sendo procurados
-                int neededFit=0;            // a quantidade de campos necessarias;
-                if(idadeBuscada!=-1){
-                    if(idadeBuscada==idade){
-                        contadorDeFit++;
-                    }
-                    neededFit++;
-                }
-                if(idBuscado!=-1){
-                    if(idBuscado==id){
-                        contadorDeFit++;
-                    }
-                    neededFit++;
-                }
-                if(strlen(nacionalidadeBuscada)>0){ 
-                    if(player->nacionalidade!=NULL)
-                        if(strcmp(nacionalidadeBuscada, player->nacionalidade)==0)
-                            contadorDeFit++;
-                    
-                    neededFit++;
-                }
-                if(strlen(nomeBuscado)>0){
-                    if(player->nomeJogador!=NULL)
-                        if(strcmp(nomeBuscado, player->nomeJogador)==0)
-                            contadorDeFit++;
-                    
-                    neededFit++;
-                }
-                if(strlen(clubeBuscado)>0){
-                    if(player->nomeClube!=NULL)
-                        if(strcmp(clubeBuscado, player->nomeClube)==0)
-                            contadorDeFit++;
-                        
-                    neededFit++;
-                }
-
-
-                if(neededFit==contadorDeFit){
+            player_data* player = criarPlayer();
+        
+            while(1){
+                 int r=processaRegistro(bin, player);
+                if(r==-1) break;
+        
+                if(r==1){ 
+               if(comparaPlayer(player, parametros[i])){
                     EXIST=1;
                     imprimePlayerData(player);
-                    if(idBuscado!=-1){          // como so há 1 id para cada se o jogador com o id foi encontrado fim-se
-                        if (player->nomeJogador != NULL)
-                         free(player->nomeJogador);
-                        if (player->nacionalidade != NULL)
-                         free(player->nacionalidade);
-                            if (player->nomeClube != NULL)
-                                free(player->nomeClube);
-                            player->nomeJogador = NULL;
-                            player->nacionalidade = NULL;
-                            player->nomeClube = NULL;
-                            break;
-                    }
+                    //if(idbuscado!=-1) break; chris coda essa parte
+                 }
                 }
-                if (player->nomeJogador != NULL)
-                    free(player->nomeJogador);
-                if (player->nacionalidade != NULL)
-                    free(player->nacionalidade);
-               if (player->nomeClube != NULL)
-                   free(player->nomeClube);
-                player->nomeJogador = NULL;
-                player->nacionalidade = NULL;
-                player->nomeClube = NULL;
-                
+                liberaPlayer(player);       
             }
                
 
             if(!EXIST){
                 printf("Registro inexistente.\n\n");
             }
-            free(player);
-            fclose(bin);
+           // free(player);
+            fecharArquivoBin(&bin);
         }
-}
+}       
 
 void delete_from_where(char *bin_name, char *index_bin_name, int n)
 {
@@ -533,7 +330,7 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
     pair arr[10002];
     int tamfila=0;
     int arquivosRemovidos=0;
-    int tinhaArquivos;
+    int tinhaArquivos = 0;
 
     FILE *bin = fopen(bin_name, "rb+"); // abre o arquivo binario
 
@@ -866,25 +663,3 @@ void insert_into(char* bin_name, char* index_bin_name, int n){
     create_index(bin_name, index_bin_name);
 }
 
-void imprimePlayerData(player_data *player){            // função que imprime a nacionalidade, nome e clube do jogador
-    printf("Nome do Jogador: ");
-    if(player->nomeJogador == NULL){
-        printf("SEM DADO\n");
-    }else{ 
-        printf("%s\n", player->nomeJogador);
-    }
-
-    printf("Nacionalidade do Jogador: ");
-    if(player->nacionalidade == NULL){
-        printf("SEM DADO\n");
-    }else{
-        printf("%s\n", player->nacionalidade);
-    }
-
-    printf("Clube do Jogador: ");
-    if(player->nomeClube == NULL){
-        printf("SEM DADO\n\n");
-    }else{
-        printf("%s\n\n", player->nomeClube);
-    }
-}

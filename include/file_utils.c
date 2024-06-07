@@ -5,6 +5,14 @@
 #include "db.h"
 #include "file_utils.h"
 
+struct player_data_ {           // estrutura para auxiliar na impressão do jogador
+    int id;
+    int idade;
+    char *nomeJogador;            // armazena o nome do jogador caso ou caso tenha
+    char *nacionalidade;            // armazena a nacionalidade 
+    char *nomeClube;            // armazena nome do clube
+};
+
 struct header_registry_ {
     char status;        // status do arquivo para saber se ele esta consistente
     int64_t topo;           // byteOff do ultimo registro removido
@@ -48,15 +56,194 @@ struct file_object_ind_ {
 };
 
 // função que inicializa a estrutura de dados file_object
-file_object* criarArquivoBin(char *bin_name){
+file_object* criarArquivoBin(char *bin_name, char *mode){
     file_object *fileObj = (file_object*) malloc(sizeof(file_object));
     header_registry *header = (header_registry*) malloc(sizeof(header_registry));
-    FILE* bin = fopen(bin_name, "wb+");
+    FILE* bin = fopen(bin_name, mode);
+    if(strcmp(mode, "rb")==0 || strcmp(mode, "rb+")==0){
+        inicializaHeader(bin, header);
+    }
     fileObj->header = header;
     fileObj->file = bin;
     fileObj->fileIndex = 0;
     
     return fileObj;
+}
+player_data * criarPlayer(){
+        player_data* player = (player_data*) malloc(sizeof(player_data));            // auxilia na modularizaçao para imprimir cada jogador 
+        player->nomeJogador = NULL;
+        player->nacionalidade = NULL;
+        player->nomeClube = NULL;
+        player->id=-1;
+        player->idade=-1;
+
+        return player;
+}
+
+int comparaPlayer(player_data *p1, player_data *p2){
+    if(p2->id!=-1 && p2->id!=p1->id){
+        return 0;
+    }
+    if(p2->idade!=-1 && p1->idade!=p2->idade){
+        return 0;
+    }
+    if(p2->nacionalidade!=NULL){
+        if(strlen(p2->nacionalidade)>0 && strcmp(p2->nacionalidade, p1->nacionalidade)!=0){
+            return 0;
+        }
+    }
+    if(p2->nomeClube!=NULL){
+        if(strlen(p2->nomeClube)>0 && strcmp(p2->nomeClube, p1->nomeClube)!=0){
+            return 0;
+        }
+    }
+    if(p2->nomeJogador!=NULL){
+        if(strlen(p2->nomeJogador)>0 && strcmp(p2->nomeJogador, p1->nomeJogador)!=0){
+            return 0;
+        }
+    }
+    return 1;
+}
+
+void inicializaHeader(FILE * bin, header_registry *header){
+        fread(&header->status, 1, 1, bin);
+        fread(&header->topo, 8, 1, bin);
+        fread(&header->proxByteOffset, 8, 1, bin);
+        fread(&header->nroRegArq, 4, 1, bin);
+        fread(&header->nroRegRem, 4, 1, bin);
+}
+
+
+void imprimePlayerData(player_data *player){            // função que imprime a nacionalidade, nome e clube do jogador
+    printf("Nome do Jogador: ");
+    if(player->nomeJogador == NULL){
+        printf("SEM DADO\n");
+    }else{ 
+        printf("%s\n", player->nomeJogador);
+    }
+
+    printf("Nacionalidade do Jogador: ");
+    if(player->nacionalidade == NULL){
+        printf("SEM DADO\n");
+    }else{
+        printf("%s\n", player->nacionalidade);
+    }
+
+    printf("Clube do Jogador: ");
+    if(player->nomeClube == NULL){
+        printf("SEM DADO\n\n");
+    }else{
+        printf("%s\n\n", player->nomeClube);
+    }
+}
+
+int verificaConsistencia(file_object * bin){
+   if(bin->file==NULL){
+        printf("Falha no processamento do arquivo.\n");
+        return 0;
+    }
+    if(bin->header->status=='0'){
+        printf("Falha no processamento do arquivo.\n");
+        return 0;
+    }
+
+    return 1;
+}
+
+void inicioRegistroDeDados(file_object * bin){
+    fseek(bin->file, 25, SEEK_SET);
+}
+
+void liberaPlayer(player_data * player){
+     if (player->nomeJogador != NULL)
+            free(player->nomeJogador);
+        if (player->nacionalidade != NULL)
+            free(player->nacionalidade);
+        if (player->nomeClube != NULL)
+            free(player->nomeClube);
+        player->nomeJogador = NULL;
+        player->nacionalidade = NULL;
+        player->nomeClube = NULL;
+}
+
+int processaRegistro(file_object * bin, player_data *player){
+    char a = getc(bin->file);        // necessario para verificar se chegamos em EOF    
+        if (a == EOF)
+            return -1;
+            
+        if(a=='1'){
+            int tamReg=0;        // o registro esta logicamente removido portanto vamos pular o registro inteiro
+            fread(&tamReg, 4, 1, bin->file);
+            fseek(bin->file, tamReg-5, SEEK_CUR);
+           return 0;
+        }
+        fseek(bin->file, 12, SEEK_CUR);        // pulamos direto para os campos de tamanho variavel pois sao os que serão impressos
+        fread(&player->id, 4, 1, bin->file);
+        fread(&player->idade, 4, 1, bin->file);
+        int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0;        // armazenaram respectivamente tamanho da string de nacionalidade, nome do jogador e nome do clube
+        fread(&tamNomeJog, 4, 1, bin->file);
+        
+        if (tamNomeJog != 0) {          // aloca 
+            player->nomeJogador = (char*) malloc((tamNomeJog+1)*sizeof(char));
+            fread(player->nomeJogador, 1, tamNomeJog, bin->file);
+            player->nomeJogador[tamNomeJog] = '\0';
+        }
+            
+        fread(&tamNacionalidade, 4, 1, bin->file);
+        
+        if (tamNacionalidade != 0){
+            player->nacionalidade = (char*) malloc((tamNacionalidade+1)*sizeof(char));
+            fread(player->nacionalidade, 1, tamNacionalidade, bin->file);
+            player->nacionalidade[tamNacionalidade] = '\0';
+
+        }
+        fread(&tamNomeClube, 4, 1, bin->file);
+        
+        if (tamNomeClube != 0) {
+            player->nomeClube = (char*) malloc((tamNomeClube+1)*sizeof(char));
+            fread(player->nomeClube, 1, tamNomeClube, bin->file);
+            player->nomeClube[tamNomeClube] = '\0';
+        }
+        return 1;
+}
+
+player_data * lePlayerData(){
+    char field_name[50];
+    int num_fields;
+        int id=-1;
+        int idade=-1;
+        char nacionalidade[50];
+        nacionalidade[0]='\0';
+        char clube[50];
+        clube[0]='\0';
+        char nome[50];
+        nome[0]='\0';
+        player_data *player = criarPlayer();
+        scanf("%d", &num_fields); 
+        for (int j = 0; j < num_fields; j++) {
+                scanf("%s", field_name);
+                if (strcmp(field_name, "id") == 0) {
+                        scanf("%d", &id);
+                }
+                else if (strcmp(field_name, "idade") == 0) {
+                        scanf("%d", &idade);
+                }
+                else if (strcmp(field_name, "nacionalidade") == 0) {
+                        scan_quote_string(nacionalidade);
+                }
+                else if (strcmp(field_name, "nomeJogador") == 0) {
+                        scan_quote_string(nome);
+                }
+                else if (strcmp(field_name, "nomeClube") == 0) {
+                        scan_quote_string(clube);
+                }
+        }
+        player->id = id;
+        player->idade = idade;
+        player->nomeJogador = strdup(nome);
+        player->nomeClube = strdup(clube);
+        player->nacionalidade = strdup(nacionalidade);
+        return player;
 }
 
 file_object_ind* criarArquivoBinInd(char *bin_name){

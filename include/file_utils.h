@@ -9,14 +9,22 @@ typedef struct file_object_ file_object;
 typedef struct file_object_ind_ file_object_ind;
 typedef struct header_index_ header_index;
 typedef struct data_index_ data_index;
+typedef struct player_data_ player_data;
 
 /*
  * Definindo as funções para manipulação do arquivo e setters e getters das estruturas de dados
  * do registro de cabeçalho e registros de dados
  * */
-file_object* criarArquivoBin(char *bin_name);
+int comparaPlayer(player_data *p1, player_data *p2);
+player_data * lePlayerData();
+file_object* criarArquivoBin(char *bin_name, char *mode);
 void fecharArquivoBin(file_object** fileObj);
-
+int verificaConsistencia(file_object* bin);
+int processaRegistro(file_object *bin, player_data* player);
+void liberaPlayer(player_data* player);
+void inicializaHeader(FILE * bin, header_registry *header);
+void inicioRegistroDeDados(file_object* bin);
+player_data* criarPlayer();
 data_registry* criarRegistro();
 void writeRegistroDados(file_object* fileObj, data_registry* registro);
 void liberarRegistro(data_registry** registro);
