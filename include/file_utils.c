@@ -96,9 +96,6 @@ int comparaPlayer(player_data *p1, player_data *p2){
         if(p1->nacionalidade==NULL){
             return 0;
         }
-        if(strcmp(p2->nacionalidade, "FRANCE")==0){
-            printf("%s\n", p2->nacionalidade);
-        }
         if(strlen(p2->nacionalidade)>0 && strcmp(p2->nacionalidade, p1->nacionalidade)!=0){
             return 0;
         }

@@ -352,6 +352,7 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
             processaRegistro(bin, player);
             if (comparaPlayer(player, parametros[i]))
             {
+                imprimePlayerData(player);
                 fseek(getFile(bin), jump, SEEK_SET);
                 char removidological='1';
                 fwrite(&removidological, 1, 1, getFile(bin));
@@ -374,6 +375,7 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
 
                 if (ans==1 && comparaPlayer(player, parametros[i]))
                 {
+                    imprimePlayerData(player);
                     fseek(getFile(bin), byteOff, SEEK_SET);
                     char removidological='1';
                     fwrite(&removidological, 1, 1, getFile(bin));
