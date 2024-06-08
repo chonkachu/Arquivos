@@ -263,10 +263,6 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                if(comparaPlayer(player, parametros[i])){
                     EXIST=1;
                     imprimePlayerData(player);
-                    // if(idbuscado(parametros[i])!=-1){
-                    //     liberaPlayer(player); 
-                    //      break;
-                    // } 
                  }
                 }
                 liberaPlayer(player);       
