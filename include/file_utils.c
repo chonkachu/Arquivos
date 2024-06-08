@@ -59,12 +59,12 @@ struct file_object_ind_ {
 file_object* criarArquivoBin(char *bin_name, char *mode){
     file_object *fileObj = (file_object*) malloc(sizeof(file_object));
     header_registry *header = (header_registry*) malloc(sizeof(header_registry));
-    FILE* bin = fopen(bin_name, mode);
-    if(strcmp(mode, "rb")==0 || strcmp(mode, "rb+")==0){
-        inicializaHeader(bin, header);
-    }
     fileObj->header = header;
+    FILE* bin = fopen(bin_name, mode);
     fileObj->file = bin;
+    if(strcmp(mode, "rb")==0 || strcmp(mode, "rb+")==0){
+        inicializaHeader(fileObj);
+    }
     fileObj->fileIndex = 0;
     
     return fileObj;
@@ -72,6 +72,10 @@ file_object* criarArquivoBin(char *bin_name, char *mode){
 
 int idbuscado(player_data *player){
     return player->id;
+}
+int64_t tamanhoBin(file_object *bin) {
+    fseek(bin->file, 0, SEEK_END);
+    return ftell(bin->file);
 }
 
 player_data * criarPlayer(){
@@ -119,32 +123,32 @@ int comparaPlayer(player_data *p1, player_data *p2){
     return 1;
 }
 
-void inicializaHeader(FILE * bin, header_registry *header){
-        fread(&header->status, 1, 1, bin);
-        fread(&header->topo, 8, 1, bin);
-        fread(&header->proxByteOffset, 8, 1, bin);
-        fread(&header->nroRegArq, 4, 1, bin);
-        fread(&header->nroRegRem, 4, 1, bin);
+void inicializaHeader(file_object *bin){
+        fseek(bin->file, 0, SEEK_SET);
+        fread(&bin->header->status, 1, 1, bin->file);
+        fread(&bin->header->topo, 8, 1, bin->file);
+        fread(&bin->header->proxByteOffset, 8, 1, bin->file);
+        fread(&bin->header->nroRegArq, 4, 1, bin->file);
+        fread(&bin->header->nroRegRem, 4, 1, bin->file);
 }
-
 
 void imprimePlayerData(player_data *player){            // função que imprime a nacionalidade, nome e clube do jogador
     printf("Nome do Jogador: ");
-    if(player->nomeJogador == NULL){
+    if(player->nomeJogador == NULL || player->nomeJogador[0] == '\0'){
         printf("SEM DADO\n");
     }else{ 
         printf("%s\n", player->nomeJogador);
     }
 
     printf("Nacionalidade do Jogador: ");
-    if(player->nacionalidade == NULL){
+    if(player->nacionalidade == NULL || player->nacionalidade[0] == '\0'){
         printf("SEM DADO\n");
     }else{
         printf("%s\n", player->nacionalidade);
     }
 
     printf("Clube do Jogador: ");
-    if(player->nomeClube == NULL){
+    if(player->nomeClube == NULL || player->nomeClube[0] == '\0'){
         printf("SEM DADO\n\n");
     }else{
         printf("%s\n\n", player->nomeClube);
@@ -167,9 +171,16 @@ int verificaConsistencia(file_object * bin){
 void inicioRegistroDeDados(file_object * bin){
     fseek(bin->file, 25, SEEK_SET);
 }
+void fimRegistroDeDados(file_object *bin) {
+    fseek(bin->file, 0, SEEK_END);
+}
 
-int64_t getTopo(file_object * bin){
+int64_t getTopo(file_object *bin){
     return bin->header->topo;
+}
+
+int64_t getFim(file_object *bin) {
+    return bin->header->proxByteOffset;
 }
 
 int getNroRegArq(file_object * bin){
@@ -237,43 +248,67 @@ int processaRegistro(file_object * bin, player_data *player){
         return 1;
 }
 
-player_data * lePlayerData(){
+data_registry* processaRegistroRemovido(file_object *bin, int64_t byteOff) {
+    data_registry *registro = criarRegistro();
+    fseek(bin->file, 1, SEEK_CUR);
+    fread(&registro->tamanhoRegistro, 4, 1, bin->file);
+    fread(&registro->prox, 8, 1, bin->file);
+    gotoByteOffArquivoBin(bin, byteOff); // volta pro inicio do registro
+    return registro;
+}
+
+player_data * lerPlayerData(int op){
     char field_name[50];
     int num_fields;
-        int id=-1;
-        int idade=-1;
-        char nacionalidade[50];
-        nacionalidade[0]='\0';
-        char clube[50];
-        clube[0]='\0';
-        char nome[50];
-        nome[0]='\0';
-        player_data *player = criarPlayer();
+
+    int id = -1;
+    int idade = -1;
+    char nacionalidade[50];
+    nacionalidade[0]='\0';
+    char clube[50];
+    clube[0]='\0';
+    char nome[50];
+    nome[0]='\0';
+    player_data *player = criarPlayer();
+    if (op == INSERT) { // operação de insert
+
+        scanf("%d", &id);
+        char temp_idade[50];
+        scan_quote_string(temp_idade);
+        if(temp_idade[0] != '\0')
+            idade = atoi(temp_idade);
+        scan_quote_string(nome);
+        scan_quote_string(nacionalidade);
+        scan_quote_string(clube);
+    }
+    else {
         scanf("%d", &num_fields); 
         for (int j = 0; j < num_fields; j++) {
-                scanf("%s", field_name);
-                if (strcmp(field_name, "id") == 0) {
-                        scanf("%d", &id);
-                }
-                else if (strcmp(field_name, "idade") == 0) {
-                        scanf("%d", &idade);
-                }
-                else if (strcmp(field_name, "nacionalidade") == 0) {
-                        scan_quote_string(nacionalidade);
-                }
-                else if (strcmp(field_name, "nomeJogador") == 0) {
-                        scan_quote_string(nome);
-                }
-                else if (strcmp(field_name, "nomeClube") == 0) {
-                        scan_quote_string(clube);
-                }
+            scanf("%s", field_name);
+            if (strcmp(field_name, "id") == 0) {
+                scanf("%d", &id);
+            }
+            else if (strcmp(field_name, "idade") == 0) {
+                scanf("%d", &idade);
+            }
+            else if (strcmp(field_name, "nacionalidade") == 0) {
+                scan_quote_string(nacionalidade);
+            }
+            else if (strcmp(field_name, "nomeJogador") == 0) {
+                scan_quote_string(nome);
+            }
+            else if (strcmp(field_name, "nomeClube") == 0) {
+                scan_quote_string(clube);
+            }
         }
-        player->id = id;
-        player->idade = idade;
-        player->nomeJogador = strdup(nome);
-        player->nomeClube = strdup(clube);
-        player->nacionalidade = strdup(nacionalidade);
-        return player;
+    }
+    player->id = id;
+    player->idade = idade;
+
+    player->nomeJogador = strdup(nome);
+    player->nomeClube = strdup(clube);
+    player->nacionalidade = strdup(nacionalidade);
+    return player;
 }
 
 file_object_ind* criarArquivoBinInd(char *bin_name){
@@ -381,6 +416,30 @@ data_registry* criarRegistro() {
 
     return registro;
 }
+data_registry* criarRegistroFromPlayer(player_data *player) {
+    data_registry *registro = criarRegistro();
+    registro->removido = '0';
+    registro->tamanhoRegistro = 33 + strlen(player->nacionalidade)
+                                   + strlen(player->nomeJogador)
+                                   + strlen(player->nomeClube);
+    registro->prox = -1;
+    registro->id = player->id;
+    registro->idade = player->idade;
+
+    registro->tamNomeJog = strlen(player->nomeJogador);
+    if (registro->tamNomeJog)
+        registro->nomeJogador = strdup(player->nomeJogador);
+
+    registro->tamNacionalidade = strlen(player->nacionalidade);
+    if (registro->tamNacionalidade)
+        registro->nacionalidade = strdup(player->nacionalidade);
+
+    registro->tamNomeClube = strlen(player->nomeClube);
+    if (registro->tamNomeClube)
+        registro->nomeClube = strdup(player->nomeClube);
+
+    return registro;
+}
 
 // função que escreve os registros de dados no arquivo binario
 void writeRegistroDados(file_object* fileObj, data_registry* registro) {
@@ -421,6 +480,9 @@ void liberarRegistro(data_registry **registro) {
     free(*registro);
     *registro = NULL;
 }
+void gotoByteOffArquivoBin(file_object *bin, int64_t byteOff) {
+    fseek(bin->file, byteOff, SEEK_SET);
+}
 
 // função que fecha o arquivo e libera memoria do registro de cabeçalho
 void fecharArquivoBin(file_object** fileObj) {
@@ -430,6 +492,12 @@ void fecharArquivoBin(file_object** fileObj) {
     *fileObj = NULL;
 }
 
+int getTamRegistro(data_registry *registro) {
+    return registro->tamanhoRegistro;
+}
+int64_t getProx(data_registry *registro) {
+    return registro->prox;
+}
 // getter do tamanho nacionalidade do registro de dados
 int getTamNacionalidade(data_registry *registro) {
     return registro->tamNacionalidade;
@@ -668,3 +736,4 @@ int fitted(FILE * bin, int idBuscado, int idadeBuscada, char *nacionalidadeBusca
 
             return 0;
 }
+

@@ -5,8 +5,8 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "file_utils.h"
 #include "db.h"
+#include "file_utils.h"
 
 int main() {
 

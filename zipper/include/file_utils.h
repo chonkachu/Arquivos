@@ -9,17 +9,43 @@ typedef struct file_object_ file_object;
 typedef struct file_object_ind_ file_object_ind;
 typedef struct header_index_ header_index;
 typedef struct data_index_ data_index;
+typedef struct player_data_ player_data;
 
+#define CREATE 0
+#define INSERT 1
+#define DELETE 2
+#define SELECT 3
 /*
  * Definindo as funções para manipulação do arquivo e setters e getters das estruturas de dados
  * do registro de cabeçalho e registros de dados
  * */
-file_object* criarArquivoBin(char *bin_name);
-void fecharArquivoBin(file_object** fileObj);
 
+FILE * getFile(file_object * bin);
+int getNroRegArq(file_object * bin);
+int getNroRegRem(file_object * bin);
+int64_t getTopo(file_object * bin);
+int64_t getFim(file_object *bin);
+int idbuscado(player_data *player);
+int comparaPlayer(player_data *p1, player_data *p2);
+player_data * lerPlayerData(int op);
+file_object* criarArquivoBin(char *bin_name, char *mode);
+int64_t tamanhoBin(file_object *bin);
+void fecharArquivoBin(file_object** fileObj);
+int verificaConsistencia(file_object* bin);
+int processaRegistro(file_object *bin, player_data* player);
+data_registry* processaRegistroRemovido(file_object *bin, int64_t byteOff);
+void liberaPlayer(player_data* player);
+void inicializaHeader(file_object *bin);
+void inicioRegistroDeDados(file_object *bin);
+void fimRegistroDeDados(file_object *bin);
+player_data* criarPlayer();
 data_registry* criarRegistro();
+void gotoByteOffArquivoBin(file_object *bin, int64_t byteOff);
+data_registry* criarRegistroFromPlayer(player_data *player);
 void writeRegistroDados(file_object* fileObj, data_registry* registro);
 void liberarRegistro(data_registry** registro);
+int getTamRegistro(data_registry *registro);
+int64_t getProx(data_registry *registro);
 int getTamNomeClube(data_registry* registro);
 int getTamNacionalidade(data_registry* registro);
 int getTamNomeJogador(data_registry* registro);
