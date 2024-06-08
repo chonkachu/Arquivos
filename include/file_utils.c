@@ -171,6 +171,18 @@ void inicioRegistroDeDados(file_object * bin){
     fseek(bin->file, 25, SEEK_SET);
 }
 
+int64_t getTopo(file_object * bin){
+    return bin->header->topo;
+}
+
+int getNroRegArq(file_object * bin){
+    return bin->header->nroRegArq;
+}
+
+int getNroRegRem(file_object * bin){
+    return bin->header->nroRegRem;
+}
+
 void liberaPlayer(player_data * player){
      if (player->nomeJogador != NULL)
             free(player->nomeJogador);
@@ -181,6 +193,10 @@ void liberaPlayer(player_data * player){
         player->nomeJogador = NULL;
         player->nacionalidade = NULL;
         player->nomeClube = NULL;
+}
+
+FILE * getFile(file_object * bin){
+    return bin->file;
 }
 
 int processaRegistro(file_object * bin, player_data *player){

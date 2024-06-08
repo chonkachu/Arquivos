@@ -305,70 +305,39 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
      file_object *bin = criarArquivoBin(bin_name, "rb+");
     if (!verificaConsistencia(bin)) return;
 
-         fseek(bin, 0, SEEK_SET);
-        char inconsistente='0';
-        fwrite(&inconsistente, 1, 1, bin);
-        
+         setHeaderStatus(bin, '0');
 
-        int64_t Topo;
-        fread(&Topo, 8, 1, bin);
+        int64_t Topo=getTopo(bin);
 
+        // obtendo todos os registros que estão apagados
         int64_t next = Topo;
         while (next != -1) {
             // Topo -> next -> next(next) -> deleted[0] -> deleted[1] ... deleted(n_queries)
             // sort(fila) por tamReg
             // do inicio do arquivo ao longo da fila, vamos ajeitar os next
-            fseek(bin, next+1, SEEK_SET); // vou pro offset do tamReg do next, que eh next+1
+            fseek(getFile(bin), next+1, SEEK_SET); // vou pro offset do tamReg do next, que eh next+1
             int tamReg = 0;
-            fread(&tamReg, 4, 1, bin);
+            fread(&tamReg, 4, 1, getFile(bin));
             arr[tamfila].tamReg = tamReg;
             arr[tamfila].byteOff = next;
             tamfila++;
-            fread(&next, 8, 1, bin);
+            fread(&next, 8, 1, getFile(bin));
         }
 
     for (int i = 0; i < n; i++)
     { // LOOP DAS BUSCAS
-    
-        
-        //FILE *bin = fopen(bin_name, "rb+"); // abre o arquivo binario
 
-        // char stats;
-        // fread(&stats, 1, 1, bin);
-
-        // if (stats == '0')
-        // {
-        //     printf("Falha no processamento do arquivoi.\n");
-        //     return;
-        // }
-        // como vamos escrever no arquivo mudamos seu estado para inconsistente
-        fseek(bin, 0, SEEK_SET);
-        char inconsistente='0';
-        fwrite(&inconsistente, 1, 1, bin);
-        
-
-        fseek(bin, 16, SEEK_CUR);
-
-        int nroRegArq;
-        int nroRegRem;
-        fread(&nroRegArq, 4, 1, bin);
-        fread(&nroRegRem, 4, 1, bin);
+        int nroRegArq = getNroRegArq(bin);
+        int nroRegRem = getNroRegRem(bin);
 
         tinhaArquivos=nroRegArq;
         arquivosRemovidos=nroRegRem;
 
-        int idBuscado = parametros[i].id;                         // o id buscado
-        int idadeBuscada = parametros[i].idade;                   // a idade buscada
-        char *nacionalidadeBuscada = parametros[i].nacionalidade; // a nacionalidade
-        char *nomeBuscado = parametros[i].nome;                   // nome
-        char *clubeBuscado = parametros[i].clube;                 // clube
-
         int64_t jump = -1;
-        if (idBuscado != -1)
+        if (idbuscado(parametros[i]) != -1)
         {
-            jump = indBB(idBuscado, index_bin_name, nroRegArq); // nao fiz a funçao nem defini ainda
+            jump = indBB(idbuscado(parametros[i]), index_bin_name, nroRegArq); // nao fiz a funçao nem defini ainda
             if(jump==-2){
-                 
                 return;
             }
         }
@@ -378,14 +347,15 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
 
         if (jump != -1)
         {
-            fseek(bin, jump, SEEK_SET);
-
-            if (fitted(bin, idBuscado, idadeBuscada, nacionalidadeBuscada, nomeBuscado, clubeBuscado))
+            fseek(getFile(bin), jump, SEEK_SET);
+            player_data * player=criarPlayer();
+            processaRegistro(bin, player);
+            if (comparaPlayer(player, parametros[i]))
             {
-                fseek(bin, jump, SEEK_SET);
+                fseek(getFile(bin), jump, SEEK_SET);
                 char removidological='1';
-                fwrite(&removidological, 1, 1, bin);
-                fread(&arr[tamfila].tamReg, 4, 1, bin);
+                fwrite(&removidological, 1, 1, getFile(bin));
+                fread(&arr[tamfila].tamReg, 4, 1, getFile(bin));
                 arr[tamfila].byteOff=jump;
                 tamfila++;
                
@@ -395,22 +365,23 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
         {
             while (1)
             { // COMEÇAMOS A LER O ARQUIVO BINARIO
-                int64_t byteOff = ftell(bin);
+                int64_t byteOff = ftell(getFile(bin));
                
-                int ans=fitted(bin, idBuscado, idadeBuscada, nacionalidadeBuscada, nomeBuscado, clubeBuscado);
+                 player_data * player=criarPlayer();
+                 int ans=processaRegistro(bin, player);
 
                 if(ans==-1) break;
 
-                if (ans==1)
+                if (ans==1 && comparaPlayer(player, parametros[i]))
                 {
-                    fseek(bin, byteOff, SEEK_SET);
+                    fseek(getFile(bin), byteOff, SEEK_SET);
                     char removidological='1';
-                    fwrite(&removidological, 1, 1, bin);
+                    fwrite(&removidological, 1, 1, getFile(bin));
                     int tamReg = 0;
-                    fread(&tamReg, 4, 1, bin);
+                    fread(&tamReg, 4, 1, getFile(bin));
                     arr[tamfila].tamReg = tamReg;
                     arr[tamfila].byteOff=byteOff;
-                    fseek(bin, tamReg-5, SEEK_CUR);
+                    fseek(getFile(bin), tamReg-5, SEEK_CUR);
                     tamfila++;
                     
                 }
@@ -425,25 +396,23 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
 
     qsort(arr, tamfila, sizeof(pair), comparaPair);
 
-    fseek(bin, 0, SEEK_SET);
-    char consistente='1';
-    fwrite(&consistente, 1, 1, bin); // consinstente 
-    fseek(bin, 16, SEEK_CUR); // pulamos topop e byteoffset
+    
+    setHeaderStatus(bin, '1'); 
     int auxiliar=tinhaArquivos-novosRemovidos;
-    fwrite(&(auxiliar), 4, 1, bin);
-    fwrite(&tamfila, 4, 1, bin);
+    setHeaderNroRegArq(bin, auxiliar);
+    setHeaderNroRegRem(bin, tamfila);
 
+    writeRegistroCabecalho(bin);
 
-
-    fseek(bin, 1, SEEK_SET); // vamos comecar do campo topo do cabecalho
+    fseek(getFile(bin), 1, SEEK_SET); // vamos comecar do campo topo do cabecalho
     for(int i=0;i<tamfila;i++){
         int64_t nowByte=arr[i].byteOff;
-        fwrite(&nowByte, 8, 1, bin);
-        fseek(bin, nowByte+5, SEEK_SET); // dou fseek pro campo de offset do proximo elemento da fila e somo tamReg + status
+        fwrite(&nowByte, 8, 1, getFile(bin));
+        fseek(getFile(bin), nowByte+5, SEEK_SET); // dou fseek pro campo de offset do proximo elemento da fila e somo tamReg + status
     }
     int64_t menos1=-1;
-    fwrite(&menos1, 8, 1, bin);
-    fclose(bin);
+    fwrite(&menos1, 8, 1, getFile(bin));
+    fecharArquivoBin(&bin);
 
     binarioNaTela(bin_name);
     create_index(bin_name, index_bin_name);
