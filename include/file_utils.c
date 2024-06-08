@@ -69,6 +69,11 @@ file_object* criarArquivoBin(char *bin_name, char *mode){
     
     return fileObj;
 }
+
+int idbuscado(player_data *player){
+    return player->id;
+}
+
 player_data * criarPlayer(){
         player_data* player = (player_data*) malloc(sizeof(player_data));            // auxilia na modularizaçao para imprimir cada jogador 
         player->nomeJogador = NULL;
@@ -88,16 +93,28 @@ int comparaPlayer(player_data *p1, player_data *p2){
         return 0;
     }
     if(p2->nacionalidade!=NULL){
+        if(p1->nacionalidade==NULL){
+            return 0;
+        }
+        if(strcmp(p2->nacionalidade, "FRANCE")==0){
+            printf("%s\n", p2->nacionalidade);
+        }
         if(strlen(p2->nacionalidade)>0 && strcmp(p2->nacionalidade, p1->nacionalidade)!=0){
             return 0;
         }
     }
     if(p2->nomeClube!=NULL){
+        if(p1->nomeClube==NULL){
+            return 0;
+        }
         if(strlen(p2->nomeClube)>0 && strcmp(p2->nomeClube, p1->nomeClube)!=0){
             return 0;
         }
     }
     if(p2->nomeJogador!=NULL){
+        if(p1->nomeJogador==NULL){
+            return 0;
+        }
         if(strlen(p2->nomeJogador)>0 && strcmp(p2->nomeJogador, p1->nomeJogador)!=0){
             return 0;
         }

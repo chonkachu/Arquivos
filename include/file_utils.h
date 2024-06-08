@@ -15,6 +15,7 @@ typedef struct player_data_ player_data;
  * Definindo as funções para manipulação do arquivo e setters e getters das estruturas de dados
  * do registro de cabeçalho e registros de dados
  * */
+int idbuscado(player_data *player);
 int comparaPlayer(player_data *p1, player_data *p2);
 player_data * lePlayerData();
 file_object* criarArquivoBin(char *bin_name, char *mode);

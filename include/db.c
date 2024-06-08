@@ -270,7 +270,10 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                if(comparaPlayer(player, parametros[i])){
                     EXIST=1;
                     imprimePlayerData(player);
-                    //if(idbuscado!=-1) break; chris coda essa parte
+                    // if(idbuscado(parametros[i])!=-1){
+                    //     liberaPlayer(player); 
+                    //      break;
+                    // } 
                  }
                 }
                 liberaPlayer(player);       
@@ -280,50 +283,17 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
             if(!EXIST){
                 printf("Registro inexistente.\n\n");
             }
-           // free(player);
-            fecharArquivoBin(&bin);
         }
+        fecharArquivoBin(&bin);
 }       
 
 void delete_from_where(char *bin_name, char *index_bin_name, int n)
 {
-    parametrosDeBusca parametros[1024]; // vetor que ira armazenar as especificaçoes de cada busca para lermos primeiro a entrada e somente depois imprimir
-    int num_fields;                     // quantidade de campos que sao requisitados na busca
-    char field_name[20];                // para ler o nome do campo
+    player_data * parametros[1024];        // vetor que ira armazenar as especificaçoes de cada busca para lermos primeiro a entrada e somente depois imprimir
 
     for (int i = 0; i < n; i++)
     {
-        parametros[i].id = -1;
-        parametros[i].idade = -1;
-        parametros[i].nacionalidade[0] = '\0';
-        parametros[i].clube[0] = '\0';
-        parametros[i].nome[0] = '\0';
-
-        scanf("%d", &num_fields);
-        for (int j = 0; j < num_fields; j++)
-        {
-            scanf("%s", field_name);
-            if (strcmp(field_name, "id") == 0)
-            {
-                scanf("%d", &parametros[i].id);
-            }
-            else if (strcmp(field_name, "idade") == 0)
-            {
-                scanf("%d", &parametros[i].idade);
-            }
-            else if (strcmp(field_name, "nacionalidade") == 0)
-            {
-                scan_quote_string(parametros[i].nacionalidade);
-            }
-            else if (strcmp(field_name, "nomeJogador") == 0)
-            {
-                scan_quote_string(parametros[i].nome);
-            }
-            else if (strcmp(field_name, "nomeClube") == 0)
-            {
-                scan_quote_string(parametros[i].clube);
-            }
-        }
+       parametros[i] = lePlayerData();
     } // Fim da computação da entrada
 
     // inicio da operação
@@ -332,22 +302,8 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
     int arquivosRemovidos=0;
     int tinhaArquivos = 0;
 
-    FILE *bin = fopen(bin_name, "rb+"); // abre o arquivo binario
-
-     if (bin == NULL)
-        {
-            printf("Falha no processamento do arquivo.\n");
-            return;
-        }
-
-    char stats;
-        fread(&stats, 1, 1, bin);
-
-        if (stats == '0')
-        {
-            printf("Falha no processamento do arquivoi.\n");
-            return;
-        }
+     file_object *bin = criarArquivoBin(bin_name, "rb+");
+    if (!verificaConsistencia(bin)) return;
 
          fseek(bin, 0, SEEK_SET);
         char inconsistente='0';
