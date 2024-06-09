@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "db.h"
 #include "file_utils.h"
 
 struct player_data_ {           // estrutura para auxiliar na impressão do jogador
@@ -174,7 +173,6 @@ void inicioRegistroDeDados(file_object * bin){
 void fimRegistroDeDados(file_object *bin) {
     fseek(bin->file, 0, SEEK_END);
 }
-
 int64_t getTopo(file_object *bin){
     return bin->header->topo;
 }
@@ -207,7 +205,45 @@ FILE * getFile(file_object * bin){
     return bin->file;
 }
 
-int processaRegistro(file_object * bin, player_data *player){
+int processaRegistro(file_object *bin, data_registry *data) {
+
+    char a = getc(bin->file);
+
+    if (a == EOF) return -1;
+
+    data->removido = a;
+    fread(&data->tamanhoRegistro, 4, 1, bin->file);
+    fread(&data->prox, 8, 1, bin->file);
+    if (a == '1') return 0;
+    fread(&data->id, 4, 1, bin->file);
+    fread(&data->idade, 4, 1, bin->file);
+
+    int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0;        // armazenaram respectivamente tamanho da string de nacionalidade, nome do jogador e nome do clube
+    fread(&tamNomeJog, 4, 1, bin->file);
+    if (tamNomeJog != 0) {          // aloca 
+        data->nomeJogador = (char*) malloc((tamNomeJog+1)*sizeof(char));
+        fread(data->nomeJogador, 1, tamNomeJog, bin->file);
+        data->nomeJogador[tamNomeJog] = '\0';
+    }
+
+    fread(&tamNacionalidade, 4, 1, bin->file);
+    if (tamNacionalidade != 0){
+        data->nacionalidade = (char*) malloc((tamNacionalidade+1)*sizeof(char));
+        fread(data->nacionalidade, 1, tamNacionalidade, bin->file);
+        data->nacionalidade[tamNacionalidade] = '\0';
+
+    }
+
+    fread(&tamNomeClube, 4, 1, bin->file);
+    if (tamNomeClube != 0) {
+        data->nomeClube = (char*) malloc((tamNomeClube+1)*sizeof(char));
+        fread(data->nomeClube, 1, tamNomeClube, bin->file);
+        data->nomeClube[tamNomeClube] = '\0';
+    }
+    return 1;
+}
+
+int processaRegistroPlayer(file_object * bin, player_data *player){
     char a = getc(bin->file);        // necessario para verificar se chegamos em EOF    
         if (a == EOF)
             return -1;
@@ -250,9 +286,7 @@ int processaRegistro(file_object * bin, player_data *player){
 
 data_registry* processaRegistroRemovido(file_object *bin, int64_t byteOff) {
     data_registry *registro = criarRegistro();
-    fseek(bin->file, 1, SEEK_CUR);
-    fread(&registro->tamanhoRegistro, 4, 1, bin->file);
-    fread(&registro->prox, 8, 1, bin->file);
+    processaRegistro(bin, registro);
     gotoByteOffArquivoBin(bin, byteOff); // volta pro inicio do registro
     return registro;
 }
@@ -325,7 +359,7 @@ data_index** criarVetorIndice(int n){
     data_index **arr = (data_index**)malloc(sizeof(data_index*)*n);
     for(int i=0;i<n;i++){
         arr[i]=(data_index*)malloc(sizeof(data_index));
-        arr[i]->id=0x7ffffff;
+        arr[i]->id=0x7fffff;
         arr[i]->byteOffset=-1;
     }
     return arr;
@@ -491,7 +525,9 @@ void fecharArquivoBin(file_object** fileObj) {
     free(*fileObj);
     *fileObj = NULL;
 }
-
+int getIdRegistro(data_registry *registro) {
+    return registro->id;
+}
 int getTamRegistro(data_registry *registro) {
     return registro->tamanhoRegistro;
 }
@@ -637,103 +673,3 @@ void scan_quote_string(char *str) {
 		strcpy(str, "");
 	}
 }
-
-int fitted(FILE * bin, int idBuscado, int idadeBuscada, char *nacionalidadeBuscada, char *nomeBuscado, char *clubeBuscado){
-            char a = getc(bin); // auxilia para saber se chegamos em EOF ou se foi logicamente removido
-            if (a == EOF)
-                return -1;
-            if (a == '1')
-            { 
-                int tamReg=0;
-                fread(&tamReg, 4, 1, bin);
-                fseek(bin, tamReg-5, SEEK_CUR);  
-                return 0;
-            }
-
-            fseek(bin, 12, SEEK_CUR); // skippa tamreg e prox
-
-            int id = -1;    // id lido do registro atual
-            int idade = -1; // idade lida do registro atual
-
-            fread(&id, 4, 1, bin);
-            fread(&idade, 4, 1, bin);
-
-
-            char *nomeJogador = NULL;
-            char *nacionalidade = NULL;
-            char *nomeClube = NULL;
-            int tamNacionalidade = 0, tamNomeJog = 0, tamNomeClube = 0; // armazenaram respectivamente tamanho da string de nacionalidade, nome do jogador e nome do clube do registro atual
-
-            fread(&tamNomeJog, 4, 1, bin);
-            if (tamNomeJog != 0)
-            {
-                nomeJogador = (char *)malloc((tamNomeJog + 1) * sizeof(char));
-                fread(nomeJogador, 1, tamNomeJog, bin);
-                nomeJogador[tamNomeJog] = '\0';
-            }
-            fread(&tamNacionalidade, 4, 1, bin);
-            if (tamNacionalidade != 0)
-            {
-                nacionalidade = (char *)malloc((tamNacionalidade + 1) * sizeof(char));
-                fread(nacionalidade, 1, tamNacionalidade, bin);
-                nacionalidade[tamNacionalidade] = '\0';
-            }
-            fread(&tamNomeClube, 4, 1, bin);
-            if (tamNomeClube != 0)
-            {
-                nomeClube = (char *)malloc((tamNomeClube + 1) * sizeof(char));
-                fread(nomeClube, 1, tamNomeClube, bin);
-                nomeClube[tamNomeClube] = '\0';
-
-            } // fim da montagem
-
-            int contadorDeFit = 0; // contador para saber se o registro possui todos os campos que estao sendo procurados
-            int neededFit = 0;     // a quantidade de campos necessarias;
-            if (idadeBuscada != -1)
-            {
-                if (idadeBuscada == idade)
-                {
-                    contadorDeFit++;
-                }
-                neededFit++;
-            }
-            if (idBuscado != -1)
-            {
-                if (idBuscado == id)
-                {
-                    contadorDeFit++;
-                }
-                neededFit++;
-            }
-            if (strlen(nacionalidadeBuscada) > 0)
-            {
-                if (nacionalidade != NULL)
-                    if (strcmp(nacionalidadeBuscada, nacionalidade) == 0)
-                        contadorDeFit++;
-
-                neededFit++;
-            }
-            if (strlen(nomeBuscado) > 0)
-            {
-                if (nomeJogador != NULL)
-                    if (strcmp(nomeBuscado, nomeJogador) == 0)
-                        contadorDeFit++;
-
-                neededFit++;
-            }
-            if (strlen(clubeBuscado) > 0)
-            {
-                if (nomeClube != NULL)
-                    if (strcmp(clubeBuscado, nomeClube) == 0)
-                        contadorDeFit++;
-
-                neededFit++;
-            }
-
-            if(neededFit==contadorDeFit){
-                return 1;
-            }
-
-            return 0;
-}
-

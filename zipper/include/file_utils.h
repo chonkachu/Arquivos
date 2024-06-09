@@ -32,7 +32,8 @@ file_object* criarArquivoBin(char *bin_name, char *mode);
 int64_t tamanhoBin(file_object *bin);
 void fecharArquivoBin(file_object** fileObj);
 int verificaConsistencia(file_object* bin);
-int processaRegistro(file_object *bin, player_data* player);
+int processaRegistro(file_object *bin, data_registry *data);
+int processaRegistroPlayer(file_object *bin, player_data* player);
 data_registry* processaRegistroRemovido(file_object *bin, int64_t byteOff);
 void liberaPlayer(player_data* player);
 void inicializaHeader(file_object *bin);
@@ -44,6 +45,7 @@ void gotoByteOffArquivoBin(file_object *bin, int64_t byteOff);
 data_registry* criarRegistroFromPlayer(player_data *player);
 void writeRegistroDados(file_object* fileObj, data_registry* registro);
 void liberarRegistro(data_registry** registro);
+int getIdRegistro(data_registry *registro);
 int getTamRegistro(data_registry *registro);
 int64_t getProx(data_registry *registro);
 int getTamNomeClube(data_registry* registro);
@@ -76,7 +78,7 @@ void setIndiceId(data_index* a, int32_t id);
 data_index** criarVetorIndice(int n);
 int64_t indBB(int id, char *bin_name, int nroRegArq);
 file_object_ind* criarArquivoBinInd(char *bin_name);
-int fitted(FILE * bin, int idBuscado, int idadeBuscada, char *nacionalidadeBuscada, char *nomeBuscado, char *clubeBuscado);
+void imprimePlayerData(player_data *player);
 
 
 void binarioNaTela(char *nomeArquivoBinario);

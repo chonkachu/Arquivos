@@ -144,53 +144,36 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
     return 1;
 }
 
-int create_index(char* bin_name, char* index_bin_name){
-    FILE *bin = fopen(bin_name, "rb");             // abre o arquivo binario
-
+void create_index(char* bin_name, char* index_bin_name){
+    file_object *bin = criarArquivoBin(bin_name, "rb");
     data_index **arr = criarVetorIndice(30113);
     
-    if(bin==NULL){
-        printf("Falha no processamento do arquivo.\n");
-        return 0;
-    }
-    char stats;
-    fread(&stats, 1, 1, bin);
-
-    if(stats=='0'){
-        printf("Falha no processamento do arquivo.\n");
-        return 0;
-    }
-
-    fseek(bin, 24, SEEK_CUR);            
-    int i=0;
-    while(1){
-        int64_t byteOff=ftell(bin);
-        char status = getc(bin);        // necessario para verificar se chegamos em EOF    
-        if (status == EOF)
+    if (!verificaConsistencia(bin)) 
+        return;
+    inicioRegistroDeDados(bin);
+    int i = 0;
+    int64_t byteOff = 25;
+    while (1) {
+        gotoByteOffArquivoBin(bin, byteOff);
+        data_registry *registro = criarRegistro();
+        int res = processaRegistro(bin, registro);
+        if (res == -1) {
+            liberarRegistro(&registro);
             break;
-        
-        if(status == '1'){
-            int tamReg=0;        // o registro esta logicamente removido portanto vamos pular o registro inteiro
-            fread(&tamReg, 4, 1, bin);
-            fseek(bin, tamReg-5, SEEK_CUR);
+        }         
+        if (res == 0) {
+            byteOff += getTamRegistro(registro);
+            liberarRegistro(&registro);
             continue;
         }
-
-        int tamReg=0;        
-        fread(&tamReg, 4, 1, bin);
-        fseek(bin, 8, SEEK_CUR);
-
-        int id;
-        fread(&id, 4, 1, bin);
-
-        
-
         setIndiceByteOff(arr[i], byteOff);
-        setIndiceId(arr[i], id);
-
-        fseek(bin, tamReg-17, SEEK_CUR);
+        setIndiceId(arr[i], getIdRegistro(registro));
+        byteOff += getTamRegistro(registro);
+        liberarRegistro(&registro);
         i++;
     }
+
+    fecharArquivoBin(&bin);
 
     qsort(arr, 30113, sizeof(data_index*), comparaIndice);
 
@@ -199,9 +182,7 @@ int create_index(char* bin_name, char* index_bin_name){
     writeRegistroCabecalhoInd(fileObj);
     writeRegistroDadosInd(fileObj, arr, i);
     fecharArquivoBinInd(&fileObj);
-    fclose(bin);
     binarioNaTela(index_bin_name);
-    return 1;
 }
 
 void select_from(char* bin_name){  
@@ -217,7 +198,7 @@ void select_from(char* bin_name){
     player_data *player = criarPlayer();
 
     while(1){
-        int r=processaRegistro(bin, player);
+        int r = processaRegistroPlayer(bin, player);
         if(r==-1) break;
         
         if(r==1){
@@ -256,17 +237,13 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
             player_data* player = criarPlayer();
         
             while(1){
-                 int r=processaRegistro(bin, player);
+                 int r = processaRegistroPlayer(bin, player);
                 if(r==-1) break;
         
                 if(r==1){ 
                if(comparaPlayer(player, parametros[i])){
                     EXIST=1;
                     imprimePlayerData(player);
-                    // if(idbuscado(parametros[i])!=-1){
-                    //     liberaPlayer(player); 
-                    //      break;
-                    // } 
                  }
                 }
                 liberaPlayer(player);       
@@ -330,7 +307,7 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
         if (jump != -1) {
             fseek(getFile(bin), jump, SEEK_SET);
             player_data * player=criarPlayer();
-            processaRegistro(bin, player);
+            processaRegistroPlayer(bin, player);
             if (comparaPlayer(player, parametros[i]))
             {
                 //imprimePlayerData(player);
@@ -348,7 +325,7 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
                 int64_t byteOff = ftell(getFile(bin));
 
                 player_data * player = criarPlayer();
-                int ans = processaRegistro(bin, player);
+                int ans = processaRegistroPlayer(bin, player);
 
                 if(ans==-1) break;
 
@@ -404,6 +381,8 @@ void insert_into(char* bin_name, char* index_bin_name, int n){
         parametros[i] = lerPlayerData(INSERT);
         registros[i] = criarRegistroFromPlayer(parametros[i]);
         tamRegistros[i] = getTamRegistro(registros[i]);
+        liberaPlayer(parametros[i]);
+        free(parametros[i]);
     }
 
     file_object *bin = criarArquivoBin(bin_name, "rb+");
@@ -451,11 +430,13 @@ void insert_into(char* bin_name, char* index_bin_name, int n){
                     }
                     numRemovidos--;
                     flag = 1;
+                    liberarRegistro(&removido);
                     break;
                 }
                 else {
                     last = byteOff+5; // vai pra exatamente o byteoffset do campo de prox do registro removido anterior
                     byteOff = getProx(removido);
+                    liberarRegistro(&removido);
                 }
             }
             if (!flag) { // se nao achou lugar pra colocar, insere no final
