@@ -69,16 +69,20 @@ file_object* criarArquivoBin(char *bin_name, char *mode){
     return fileObj;
 }
 
+// metodo para obter id de um player
 int idbuscado(player_data *player){
     return player->id;
 }
+
+// metodo para obter o byteOffset do fim do arq
 int64_t tamanhoBin(file_object *bin) {
     fseek(bin->file, 0, SEEK_END);
     return ftell(bin->file);
 }
 
+// auxilia na modularizaçao para imprimir cada jogador 
 player_data * criarPlayer(){
-        player_data* player = (player_data*) malloc(sizeof(player_data));            // auxilia na modularizaçao para imprimir cada jogador 
+        player_data* player = (player_data*) malloc(sizeof(player_data));           
         player->nomeJogador = NULL;
         player->nacionalidade = NULL;
         player->nomeClube = NULL;
@@ -88,6 +92,8 @@ player_data * criarPlayer(){
         return player;
 }
 
+
+// compara se p2 é subconjunto de p1 ou seja se todo parametro de p2 esta em p1
 int comparaPlayer(player_data *p1, player_data *p2){
     if(p2->id!=-1 && p2->id!=p1->id){
         return 0;
@@ -122,6 +128,7 @@ int comparaPlayer(player_data *p1, player_data *p2){
     return 1;
 }
 
+// configura o header do arquivo binario
 void inicializaHeader(file_object *bin){
         fseek(bin->file, 0, SEEK_SET);
         fread(&bin->header->status, 1, 1, bin->file);
@@ -154,6 +161,7 @@ void imprimePlayerData(player_data *player){            // função que imprime 
     }
 }
 
+// checagem basica se o arquivo esta ok
 int verificaConsistencia(file_object * bin){
    if(bin->file==NULL){
         printf("Falha no processamento do arquivo.\n");
@@ -167,12 +175,16 @@ int verificaConsistencia(file_object * bin){
     return 1;
 }
 
+// vai para onde se inicio o registro de dados
 void inicioRegistroDeDados(file_object * bin){
     fseek(bin->file, 25, SEEK_SET);
 }
+
+// vai para o fim do registro de dados
 void fimRegistroDeDados(file_object *bin) {
     fseek(bin->file, 0, SEEK_END);
 }
+
 int64_t getTopo(file_object *bin){
     return bin->header->topo;
 }
@@ -205,6 +217,7 @@ FILE * getFile(file_object * bin){
     return bin->file;
 }
 
+// processaremos o registro e guardaremos o registro
 int processaRegistro(file_object *bin, data_registry *data) {
 
     char a = getc(bin->file);
@@ -243,6 +256,7 @@ int processaRegistro(file_object *bin, data_registry *data) {
     return 1;
 }
 
+// processa-se um registro e configureramos um player a partir disso
 int processaRegistroPlayer(file_object * bin, player_data *player){
     char a = getc(bin->file);        // necessario para verificar se chegamos em EOF    
         if (a == EOF)
@@ -284,6 +298,7 @@ int processaRegistroPlayer(file_object * bin, player_data *player){
         return 1;
 }
 
+// processa-se um registro removido
 data_registry* processaRegistroRemovido(file_object *bin, int64_t byteOff) {
     data_registry *registro = criarRegistro();
     processaRegistro(bin, registro);
@@ -291,6 +306,7 @@ data_registry* processaRegistroRemovido(file_object *bin, int64_t byteOff) {
     return registro;
 }
 
+// a partir da entrada geraremos um player
 player_data * lerPlayerData(int op){
     char field_name[50];
     int num_fields;
@@ -345,6 +361,7 @@ player_data * lerPlayerData(int op){
     return player;
 }
 
+// cria arquivo binario de indice
 file_object_ind* criarArquivoBinInd(char *bin_name){
     file_object_ind *fileObj = (file_object_ind*) malloc(sizeof(file_object_ind));
     header_index *header = (header_index*) malloc(sizeof(header_index));
@@ -355,6 +372,7 @@ file_object_ind* criarArquivoBinInd(char *bin_name){
     return fileObj;
 }
 
+// um vetor com registros de indice
 data_index** criarVetorIndice(int n){
     data_index **arr = (data_index**)malloc(sizeof(data_index*)*n);
     for(int i=0;i<n;i++){
@@ -364,6 +382,7 @@ data_index** criarVetorIndice(int n){
     }
     return arr;
 }
+
 int32_t getIndiceId(data_index* a){
     return a->id;
 }
@@ -376,6 +395,7 @@ void setIndiceId(data_index* a, int32_t id){
 void setIndiceByteOff(data_index* a, int64_t byteOff){
     a->byteOffset = byteOff;
 }
+// utilizado para a ordenaçao dos vetores de indice
 int comparaIndice(const void *a, const void *b) {
     const data_index *da = *(const data_index **)a;
     const data_index *db = *(const data_index **)b;
@@ -384,6 +404,7 @@ int comparaIndice(const void *a, const void *b) {
     if (da->id > db->id) return 1;
     return 0;
 }
+
 void setHeaderStatusInd(file_object_ind* fileObj, char status){
     fileObj->header->status = status;
 }
@@ -404,6 +425,8 @@ void fecharArquivoBinInd(file_object_ind** fileObj){
     free(*fileObj);
     *fileObj = NULL;
 }
+
+// busca binaria no arquivo de indice
 int64_t indBB(int id, char *bin_name, int nroRegArq){
     int ini=1;
     int fim=nroRegArq;
@@ -422,7 +445,9 @@ int64_t indBB(int id, char *bin_name, int nroRegArq){
     while(ini<=fim){
         int meio=(ini+fim)/2;
 
-        fseek(bin, 12*(meio-1)+1, SEEK_SET);
+        fseek(bin, 12*(meio-1)+1, SEEK_SET);  // como so temos id e byteOff 4+8=12 bytes o tamnho de cada registro aqui
+                                             //sendo assim podemos ir para o inicio de cada registro com 12*(rrn-1)+1
+                                            //onde +1 surge por conta do status de consistencia
         int idfound;
         fread(&idfound, 4, 1, bin);
         if(idfound==id){
@@ -450,6 +475,8 @@ data_registry* criarRegistro() {
 
     return registro;
 }
+
+//cria um registro a partir de um player importante na insert_into
 data_registry* criarRegistroFromPlayer(player_data *player) {
     data_registry *registro = criarRegistro();
     registro->removido = '0';

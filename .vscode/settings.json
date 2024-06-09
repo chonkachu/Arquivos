@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "file_utils.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "db.h": "c"
     }
 }
