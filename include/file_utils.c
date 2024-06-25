@@ -383,6 +383,13 @@ data_index** criarVetorIndice(int n){
     return arr;
 }
 
+data_index* criarDataIndex(int id, int64_t byteOff) {
+    data_index * data = malloc(sizeof(data_index));
+    data->id = id;
+    data->byteOffset = byteOff;
+
+    return data;
+}
 int32_t getIndiceId(data_index* a){
     return a->id;
 }

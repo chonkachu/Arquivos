@@ -470,3 +470,45 @@ void insert_into(char* bin_name, char* index_bin_name, int n){ // operação que
     binarioNaTela(bin_name);
     create_index(bin_name, index_bin_name);
 }
+
+void create_index_btree(csv_name, bin_name){
+    file_object *bin = criarArquivoBin(bin_name, "rb");
+    
+    if (!verificaConsistencia(bin)) 
+        return;
+    inicioRegistroDeDados(bin);
+    int i = 0;
+    int64_t byteOff = 25;
+    while (1) { // iniciamos a percorre o arquivo binario
+        gotoByteOffArquivoBin(bin, byteOff);
+        data_registry *registro = criarRegistro();
+        int res = processaRegistro(bin, registro);  // processamos registro
+        if (res == -1) {
+            liberarRegistro(&registro);  // chegamos em EOF daremos break;
+            break;
+        }         
+        if (res == 0) {
+            byteOff += getTamRegistro(registro); // o registro esta logicamente removido pula-se
+            liberarRegistro(&registro);
+            continue;
+        }
+        setIndiceByteOff(arr[i], byteOff);
+        setIndiceId(arr[i], getIdRegistro(registro)); // setamos o registro do indice
+        byteOff += getTamRegistro(registro);
+        liberarRegistro(&registro);
+        i++;
+    }
+
+}
+    
+void select_from_id(csv_name, bin_name, num_queries){
+
+}
+   
+void select_from_where_btree(csv_name, bin_name, num_queries){
+
+}
+    
+void insert_into_btree(csv_name, bin_name, num_queries){
+
+}
