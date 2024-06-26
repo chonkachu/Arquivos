@@ -44,7 +44,7 @@ void copyFromWPageToPageBeforePromo(WPAGE *wPag, PAGE *pag, int promoKey);
 
 void copyFromWPageToPageFollowingPromo(WPAGE *wPag, PAGE *pag, int promoKey);
 
-void driver(char *btreeFile, data_index** arr, int i);
+void driver(char *btreeFile, data_index** arr, int nroReg);
 
 int64_t search(int rrn, int chave, int *found_RRN, int *found_POS, file_object_btree *bTree);
 

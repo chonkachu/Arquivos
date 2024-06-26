@@ -81,8 +81,10 @@ void lerPagina(int rrn, PAGE *page, file_object_btree *bTree) {
     jumpToRRN(bTree, rrn);
     fread(&(page->alturaNo), sizeof(int), 1, bTree->file);
     fread(&(page->nroChaves), sizeof(int), 1, bTree->file);
-    fread(page->c, sizeof(int), 3, bTree->file);
-    fread(page->pr, sizeof(int64_t), 3, bTree->file);
+    for (int i = 0; i < 3; i++) {
+        fread(&page->c[i], sizeof(int), 1, bTree->file);
+        fread(&page->pr[i], sizeof(int64_t), 1, bTree->file);
+    }
     fread(page->p, sizeof(int), 4, bTree->file);
 }
 
@@ -102,24 +104,28 @@ int verificaConsistenciaBTree(file_object_btree *bTree){
         printf("Falha no processamento do arquivo.\n");
         return 0;
     }
-
     return 1;
 }
 
 void inicializaHeaderBTree(file_object_btree *bTree) {
-    jumpToRRN(bTree, 0);
-    fread(&(bTree->header->status), sizeof(char), 1, bTree->file);
-    fread(&(bTree->header->noRaiz), sizeof(int), 1, bTree->file);
-    fread(&(bTree->header->proxRRN), sizeof(int), 1, bTree->file);
-    fread(&(bTree->header->nroChaves), sizeof(int), 1, bTree->file);
+    fseek(bTree->file, 0, SEEK_SET);
+    fread(&(bTree->header->status), 1, 1, bTree->file);
+    fread(&(bTree->header->noRaiz), 1, 1, bTree->file);
+    fread(&(bTree->header->proxRRN), 4, 1, bTree->file);
+    fread(&(bTree->header->nroChaves), 4, 1, bTree->file);
 }
 
 void escreverHeaderBTree(file_object_btree *bTree) {
-    jumpToRRN(bTree, 0);
-    fwrite(&(bTree->header->status), sizeof(char), 1, bTree->file);
-    fwrite(&(bTree->header->noRaiz), sizeof(int), 1, bTree->file);
-    fwrite(&(bTree->header->proxRRN), sizeof(int), 1, bTree->file);
-    fwrite(&(bTree->header->nroChaves), sizeof(int), 1, bTree->file);
+    printf("header: %c %d %d %d\n", bTree->header->status, bTree->header->noRaiz, bTree->header->proxRRN, bTree->header->nroChaves);
+    fseek(bTree->file, 0, SEEK_SET);
+    fwrite(&(bTree->header->status), 1, 1, bTree->file);
+    fwrite(&(bTree->header->noRaiz), 4, 1, bTree->file);
+    fwrite(&(bTree->header->proxRRN), 4, 1, bTree->file);
+    fwrite(&(bTree->header->nroChaves), 4, 1, bTree->file);
+    char dollar = '$';
+    for (int i = 13; i < 60; i++) {
+        fwrite(&dollar, 1, 1, bTree->file);
+    }
 }
 
 int getRaizRRN(file_object_btree * bTree){
@@ -131,6 +137,7 @@ file_object_btree * criarArquivoBinBtree(char *bin_name, char *mode){
     header_btree *header = (header_btree*) malloc(sizeof(header_btree));
     bTree->header = header;
     FILE* bin = fopen(bin_name, mode);
+    if (bin == NULL) return NULL; // nao conseguiu abrir
     bTree->file = bin;
     if(strcmp(mode, "rb")==0 || strcmp(mode, "rb+")==0){
         inicializaHeaderBTree(bTree);
@@ -147,7 +154,7 @@ int searchKeyOnPage(PAGE *page, data_index *data) {
         if (key == page->c[i]) {
             return -1;
         }
-        else if (key > page->c[i]){
+        else if (page->c[i] != -1 && key > page->c[i]){
             pos++;
         }
     }
@@ -178,40 +185,54 @@ void insereDadoPage(PAGE *page, data_index *data, int newP) {
     page->p[pos + 1] = newP;
 
     page->nroChaves++;
-
-    if (pos == 0) {
-        page->p[0] = newP;
-    }
 }
 
 void jumpToRRN(file_object_btree * bTree, int RRN){
-    fseek(bTree->file, 13+RRN*60, SEEK_SET);
+    fseek(bTree->file, 60+RRN*60, SEEK_SET);
+    printf("dando seek para %ld\n", ftell(bTree->file));
 }
 
 void escrevePaginaNaBTree(file_object_btree * bTree, PAGE * pag){
-    fwrite(&(pag->alturaNo), 4, 1, bTree->file);
-    fwrite(&(pag->nroChaves), 4, 1, bTree->file);
-    fwrite(pag->c, 4, 3, bTree->file);
-    fwrite(pag->pr, 8, 3, bTree->file);
-    fwrite(pag->p, 4, 4, bTree->file);
+    fwrite(&(pag->alturaNo), sizeof(pag->alturaNo), 1, bTree->file);
+    fwrite(&(pag->nroChaves), sizeof(pag->nroChaves), 1, bTree->file);
+    for (int i = 0; i < 3; i++){
+        fwrite(&(pag->c[i]), sizeof(pag->c[i]), 1, bTree->file);
+        fwrite(&(pag->pr[i]), sizeof(pag->pr[i]), 1, bTree->file);
+    } 
+    for (int i = 0; i < 4; i++){
+        fwrite(&pag->p[i], sizeof(pag->p[i]), 1, bTree->file);
+    } 
 }
 
 void escreveRegistroBtree(PAGE * pag, int RRN, file_object_btree * bTree){
+    printf("escrevendo page\n");
+    printf("RRN: %d\n", RRN);
+    printf("altura: %d\n",pag->alturaNo);
+    printf("nroChaves: %d\n", pag->nroChaves);
+    for (int i = 0; i < 3; i++) printf("c[%d]: %d ", i, pag->c[i]);
+    printf("\n");
+    for (int i = 0; i < 3; i++) printf("pr[%d]: %ld ", i, pag->pr[i]);
+    printf("\n");
+    for (int i = 0; i < 4; i++) printf("p[%d]: %d ", i, pag->p[i]);
+    printf("\n");
+
     jumpToRRN(bTree, RRN);
     escrevePaginaNaBTree(bTree, pag);
 }
 
 int insert(int rrnAtual, data_index *data, int * promoRchild,  data_index* promoKey, file_object_btree * bTree, int* altura){
     if(rrnAtual==-1){
-        promoKey = data;
+        printf("estou setando uma folha para promover agora\n");
+        setIndiceId(promoKey, getIndiceId(data));
+        setIndiceByteOff(promoKey, getByteOff(data));
         *promoRchild = -1;
-       // altura = 0;
         return PROMOTION;
     }else{
         PAGE * page = criarPagina();
         lerPagina(rrnAtual, page, bTree);
         int pos = searchKeyOnPage(page, data);
 
+        printf("estou em registro de RRN: %d, pos achado: %d\n", rrnAtual, pos);
         if(pos==-1){
             return ERRO;
         }
@@ -223,13 +244,18 @@ int insert(int rrnAtual, data_index *data, int * promoRchild,  data_index* promo
 
         if(retorno == NO_PROMOTION || retorno == ERRO){
             return retorno;
-        }else if(!full(page)){
+        }
+        else if(!full(page)){
             insereDadoPage(page, pbKEY, pbRRN);
+            escreveRegistroBtree(page, rrnAtual, bTree);
             return NO_PROMOTION;
-        }else{
+        }
+        else{
             PAGE * newPage = criarPagina();
             newPage->alturaNo = page->alturaNo;
+            printf("splitei em RRN: %d\n", rrnAtual);
             split(pbKEY, pbRRN, page, promoKey, promoRchild, newPage, bTree);
+            printf("promoveu: %d\n",getIndiceId(promoKey));
             escreveRegistroBtree(page, rrnAtual, bTree);
             escreveRegistroBtree(newPage,*promoRchild, bTree);
             if (altura != NULL) *altura = page->alturaNo+1;
@@ -265,30 +291,19 @@ void insereOrdenadoOnWPage(WPAGE *wPag, data_index * data, int newP) {
 }
 
 data_index * getMiddle(WPAGE * wPag, int *promoRChild, file_object_btree *bTree){
-    data_index * data = criarDataIndex(wPag->c[2], wPag->pr[2]);
+    data_index * data = criarDataIndex(wPag->c[1], wPag->pr[1]);
     *promoRChild = getAndIncrementaRRN(bTree);
     return data;
-}
-
-void split(data_index *newKey, int newP, PAGE * pag, data_index *promoKey, int *promoRChild, PAGE * newPag, file_object_btree *bTree){
-    WPAGE * wPag = criarWorkingPage(pag);
-
-    insereOrdenadoOnWPage(wPag, newKey, newP);
-
-    promoKey = getMiddle(wPag, promoRChild, bTree);
-
-    int chave = getIndiceId(promoKey);
-    
-    // copia da working page para a pagina atual da insert
-    copyFromWPageToPageBeforePromo(wPag, pag, chave);
-
-    // copia da working page para a nova pagina de split
-    copyFromWPageToPageFollowingPromo(wPag, newPag, chave);
 }
 
 void copyFromWPageToPageBeforePromo(WPAGE *wPag, PAGE *pag, int promoKey) {
     // Copy keys and associated data pointers and child pointers
     int pos = 0;
+    // preciso resetar os caras de page primeiro, e escrever os da working page em cima
+    for (int i = 0; i < 3; i++) pag->c[i] = -1;
+    for (int i = 0; i < 3; i++) pag->pr[i] = -1;
+    for (int i = 0; i < 4; i++) pag->p[i] = -1;
+
     while (pos < wPag->nroChaves && wPag->c[pos] < promoKey) {
         pag->c[pos] = wPag->c[pos];
         pag->pr[pos] = wPag->pr[pos];
@@ -303,49 +318,91 @@ void copyFromWPageToPageBeforePromo(WPAGE *wPag, PAGE *pag, int promoKey) {
 
 void copyFromWPageToPageFollowingPromo(WPAGE *wPag, PAGE *pag, int promoKey) {
     // Start copying after the promotion key
-    int pos=3;
 
-    int start = pos;
-    pos = 0;
+    int start = 2; // splita no 1, comeca no 2
+    int pos = 0;
 
-    pag->c[pos] = wPag->c[start];
-    pag->pr[pos] = wPag->pr[start];
-    pag->p[pos] = wPag->p[start];
-    pos++;
-    start++;
+    while (start < wPag->nroChaves) {
+        pag->c[pos] = wPag->c[start];
+        pag->pr[pos] = wPag->pr[start];
+        pag->p[pos] = wPag->p[start];
+        pos++;
+        start++;
+    }
 
     pag->p[pos] = wPag->p[start];
     pag->nroChaves = pos; // Update number of keys in the page
 }
 
-void driver(char *btreeFile, data_index** arr, int i){
+void split(data_index *newKey, int newP, PAGE * pag, data_index *promoKey, int *promoRChild, PAGE * newPag, file_object_btree *bTree){
+    WPAGE * wPag = criarWorkingPage(pag);
+
+    insereOrdenadoOnWPage(wPag, newKey, newP);
+
+    data_index *mid = getMiddle(wPag, promoRChild, bTree);
+    setIndiceId(promoKey, getIndiceId(mid));
+    setIndiceByteOff(promoKey, getByteOff(mid));
+
+    int chave = getIndiceId(promoKey);
+    
+    // copia da working page para a pagina atual da insert
+    copyFromWPageToPageBeforePromo(wPag, pag, chave);
+
+    // copia da working page para a nova pagina de split
+    copyFromWPageToPageFollowingPromo(wPag, newPag, chave);
+}
+void driver(char *btreeFile, data_index** arr, int nroReg){
     // Open or create the B-tree file
     file_object_btree *bTree = criarArquivoBinBtree(btreeFile, "rb+");
     if (bTree == NULL) {
         // File doesn't exist, create a new B-tree file
         bTree = criarArquivoBinBtree(btreeFile, "wb+");
-        bTree->header->status = '1';
+        bTree->header->status = '0';
         bTree->header->noRaiz = -1;
         bTree->header->proxRRN = 0;
         bTree->header->nroChaves = 0;
+        escreverHeaderBTree(bTree);
 
     } else {
         if(!verificaConsistenciaBTree(bTree))
             return;
-        // File exists, read the root RRN
-        fseek(bTree->file, 13, SEEK_SET);
-        fread(&(bTree->header->noRaiz), 4, 1, bTree->file);
     }
 
     int ROOT = bTree->header->noRaiz; // get RRN of root
 
-    int nroReg=i;
-    for(int i=0;i<nroReg;i++){ // Continue while there are keys to insert
+    int num = nroReg;
+//  num = 15;
+//  int test[num];
+//  int first[num];
+//  for (int i = 0; i < num; i++) {
+//      test[i] = getIndiceId(arr[i]);
+//      first[i] = test[i];
+//  }
+
+//  for (int i = 0; i < num; i++) {
+//      for (int j = 0; j < num-i-1; j++) {
+//          if (test[j] > test[j+1]) {
+//              int aux = test[j+1];
+//              test[j+1] = test[j];
+//              test[j] = aux;
+//          }
+//      }
+//  }
+//  for (int i = 0; i < num; i++) {
+//      for (int j = 0; j < num; j++) {
+//          if (test[j] == first[i]) {
+//              printf("id: %d -> j: %d\n", first[i], j);
+//          }
+//      }
+//  }
+    for(int i = 0; i < num; i++){ // Continue while there are keys to insert
         data_index * KEY = arr[i];// Initialize with the first key value to insert
 
         int PROMO_R_CHILD;
         data_index *PROMO_KEY = criarDataIndex(-1, -1);
         int alturaPag = 0;
+        printf("\nINSERT %d AGORA, inserindo: %d\n", i+1, getIndiceId(KEY));
+        bTree->header->nroChaves++;
         if (insert(ROOT, KEY, &PROMO_R_CHILD, PROMO_KEY, bTree, &alturaPag) == PROMOTION) {
             // Create a new root page with key := PROMO_KEY, left child := ROOT and right child := PROMO_R_CHILD
             PAGE *newRootPage = criarPagina();
@@ -359,22 +416,17 @@ void driver(char *btreeFile, data_index** arr, int i){
             // Set ROOT to RRN of the new root page
             ROOT = getAndIncrementaRRN(bTree);
             bTree->header->noRaiz = ROOT;
+            printf("nova raiz em RRN: %d\n", ROOT);
 
             // Write the new root page to the file
             escreveRegistroBtree(newRootPage, ROOT, bTree);
-            bTree->header->nroChaves++;
             free(newRootPage);
         }
-
-        // Get the next key and store it in KEY
-        // You will need a way to get the next key, for example, from user input or a file
-        // KEY = ; // Read the next key to insert
     }
 
     // Write the updated root RRN and other header info back to B-tree file
-    fseek(bTree->file, 0, SEEK_SET);
-    fwrite(bTree->header, sizeof(header_btree), 1, bTree->file);
-
+    bTree->header->status = '1';
+    escreverHeaderBTree(bTree);
     // Close B-tree file
     fecharArquivoBinBTree(&bTree);
 }
