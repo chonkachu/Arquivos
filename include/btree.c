@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <string.h>
 #include "file_utils.h"
-#include "db.h"
 #include "btree.h"
 
 enum Mode {
@@ -87,6 +86,26 @@ void lerPagina(int rrn, PAGE *page, file_object_btree *bTree) {
     fread(page->p, sizeof(int), 4, bTree->file);
 }
 
+void fecharArquivoBinBTree(file_object_btree** bTree){
+    fclose((*bTree)->file);
+    free((*bTree)->header);
+    free(*bTree);
+    *bTree = NULL;
+}
+
+int verificaConsistenciaBTree(file_object_btree *bTree){
+   if(bTree->file==NULL){
+        printf("Falha no processamento do arquivo.\n");
+        return 0;
+    }
+    if(bTree->header->status=='0'){
+        printf("Falha no processamento do arquivo.\n");
+        return 0;
+    }
+
+    return 1;
+}
+
 void inicializaHeaderBTree(file_object_btree *bTree) {
     jumpToRRN(bTree, 0);
     fread(&(bTree->header->status), sizeof(char), 1, bTree->file);
@@ -94,9 +113,17 @@ void inicializaHeaderBTree(file_object_btree *bTree) {
     fread(&(bTree->header->proxRRN), sizeof(int), 1, bTree->file);
     fread(&(bTree->header->nroChaves), sizeof(int), 1, bTree->file);
 }
+
 void escreverHeaderBTree(file_object_btree *bTree) {
     jumpToRRN(bTree, 0);
-    fwrite(&bTree->header->status);
+    fwrite(bTree->header->status, sizeof(char), 1, bTree->file);
+    fwrite((bTree->header->noRaiz), sizeof(int), 1, bTree->file);
+    fwrite((bTree->header->proxRRN), sizeof(int), 1, bTree->file);
+    fwrite((bTree->header->nroChaves), sizeof(int), 1, bTree->file);
+}
+
+int getRaizRRN(file_object_btree * bTree){
+    return bTree->header->noRaiz;
 }
 
 file_object_btree * criarArquivoBinBtree(char *bin_name, char *mode){
@@ -291,7 +318,7 @@ void copyFromWPageToPageFollowingPromo(WPAGE *wPag, PAGE *pag, int promoKey) {
     pag->nroChaves = pos; // Update number of keys in the page
 }
 
-void driver(char *btreeFile, data_index *data) {
+void driver(char *btreeFile, data_index** arr, int i){
     // Open or create the B-tree file
     file_object_btree *bTree = criarArquivoBinBtree(btreeFile, "rb+");
     if (bTree == NULL) {
@@ -303,15 +330,19 @@ void driver(char *btreeFile, data_index *data) {
         bTree->header->nroChaves = 0;
 
     } else {
+        if(!verificaConsistenciaBTree(bTree))
+            return;
         // File exists, read the root RRN
         fseek(bTree->file, 13, SEEK_SET);
         fread(&(bTree->header->noRaiz), 4, 1, bTree->file);
     }
 
     int ROOT = bTree->header->noRaiz; // get RRN of root
-    data_index *KEY = data;// Initialize with the first key value to insert
 
-    while (KEY != -1) { // Continue while there are keys to insert
+    int nroReg=i;
+    for(int i=0;i<nroReg;i++){ // Continue while there are keys to insert
+        data_index * KEY = arr[i];// Initialize with the first key value to insert
+
         int PROMO_R_CHILD;
         data_index *PROMO_KEY;
         int alturaPag = 0;
@@ -344,9 +375,7 @@ void driver(char *btreeFile, data_index *data) {
     fwrite(bTree->header, sizeof(header_btree), 1, bTree->file);
 
     // Close B-tree file
-    fclose(bTree->file);
-    free(bTree->header);
-    free(bTree);
+    fecharArquivoBinBTree(&bTree);
 }
 
 int64_t search(int rrn, int chave, int *found_RRN, int *found_POS, file_object_btree *bTree) {
