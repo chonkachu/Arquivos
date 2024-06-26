@@ -494,8 +494,8 @@ void create_index_btree(char * bin_name, char * index_bin_name){
             liberarRegistro(&registro);
             continue;
         }
-        setIndiceByteOff(arr[i], byteOff);
-        setIndiceId(arr[i], getIdRegistro(registro)); // setamos o registro do indice
+        setIndiceByteOff(arr[i], byteOff); // setamos o byteoff do indice
+        setIndiceId(arr[i], getIdRegistro(registro)); // setamos o id do indice
         byteOff += getTamRegistro(registro);
         liberarRegistro(&registro);
         i++;
@@ -520,21 +520,22 @@ void select_from_id(char * bin_name, char * index_bin_name, int num_queries){
 
     int raizRRN=getRaizRRN(bTree);
 
-    for(int i=0;i<num_queries;i++){
-        int fRRN=0;
-        int fPOS=0;
+    for(int i=0;i<num_queries;i++){ // loop das buscas
+        int fRRN=0; // rrn encontrado
+        int fPOS=0; // pos encontrada
+        // serve apenas para atender ao pseudocodigo provindo dos slides
 
         char busca[3]; int id;
 
         scanf("%s %d", busca, &id);
 
-        int maybeByteOff=search(raizRRN, id, &fRRN, &fPOS, bTree);
+        int maybeByteOff=search(raizRRN, id, &fRRN, &fPOS, bTree); // recebe o o byteoffset do regiustro se encontrar ou -1 caso nao
 
         printf("BUSCA %d\n\n", i+1);
 
         if(maybeByteOff==-1){
             printf("Registro inexistente.\n\n");
-        }else{
+        }else{ // processamos o registro e imprimos o jogador
             fseek(getFile(bin), maybeByteOff, SEEK_SET);
             player_data * player=criarPlayer();
             processaRegistroPlayer(bin, player);
@@ -563,7 +564,7 @@ void select_from_where_btree(char * bin_name, char * index_bin_name, int num_que
     if (!verificaConsistencia(bin)) 
         return;
 
-    int raizRRN=getRaizRRN(bTree);
+    int raizRRN=getRaizRRN(bTree); 
     
 
     for (int i = 0; i < num_queries; i++)
@@ -572,6 +573,8 @@ void select_from_where_btree(char * bin_name, char * index_bin_name, int num_que
         inicioRegistroDeDados(bin);
         
         if (idbuscado(parametros[i]) != -1){ // se possui id na busca usaremos busca binaria com o indice da btree
+
+        // mesmmo conceito de select from id
             int fRRN=0;
             int fPOS=0;
 
@@ -585,6 +588,8 @@ void select_from_where_btree(char * bin_name, char * index_bin_name, int num_que
                 fseek(getFile(bin), maybeByteOff, SEEK_SET);
                 player_data * player=criarPlayer();
                 processaRegistroPlayer(bin, player);
+
+                // no entanto temos que saber se mesmo com o id encontrado temos que saber se bate com os outros parametros
                 if(comparaPlayer(player, parametros[i])){
                     imprimePlayerData(player);
                 }else{
@@ -645,6 +650,7 @@ void insert_into_btree(char * bin_name, char * index_bin_name, int n){
         return;
     if (!verificaConsistenciaBTree(bTree))
         return;
+
     data_index **arr = criarVetorIndice(30113);  // cria vetor que armazena byteOffset e id do registro
     int tam=0;
 
@@ -652,7 +658,7 @@ void insert_into_btree(char * bin_name, char * index_bin_name, int n){
     int numRegistros = getNroRegArq(bin);
     int numRemovidos = getNroRegRem(bin);
 
-    setHeaderStatus(bin, '0'); // vamos operar no arquivo agr
+    setHeaderStatus(bin, '0'); // vamos operar no arquivo agora
     writeRegistroCabecalho(bin);
 
     if (topo == -1) { // se nao tem nada removido adicionaremos no fim
@@ -662,6 +668,7 @@ void insert_into_btree(char * bin_name, char * index_bin_name, int n){
             writeRegistroDados(bin, registros[i]);
             numRegistros++;
 
+            // adicionamos o registro no vetor que guarda id e byteoff para depois adicionar na btree
             setIndiceId(arr[tam], getIdRegistro(registros[i]));
             setIndiceByteOff(arr[tam], byteOff);
             tam++;
@@ -713,6 +720,7 @@ void insert_into_btree(char * bin_name, char * index_bin_name, int n){
             } 
             numRegistros++;
 
+            // adicionamos o registro no vetor que guarda id e byteoff para depois adicionar na btree
             setIndiceId(arr[tam], getIdRegistro(registros[i]));
             setIndiceByteOff(arr[tam], byteOff);
             tam++;
@@ -728,6 +736,7 @@ void insert_into_btree(char * bin_name, char * index_bin_name, int n){
     writeRegistroCabecalho(bin);
     fecharArquivoBin(&bin);
 
+    // chamamos driver para fazer a insersação
     driver(index_bin_name, arr, tam);
 
     binarioNaTela(bin_name);
