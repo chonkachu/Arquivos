@@ -139,9 +139,8 @@ file_object_btree * criarArquivoBinBtree(char *bin_name, char *mode){
     header_btree *header = (header_btree*) malloc(sizeof(header_btree));
     bTree->header = header;
     FILE* bin = fopen(bin_name, mode);
-    if (bin == NULL) return NULL; // nao conseguiu abrir
     bTree->file = bin;
-    if(strcmp(mode, "rb")==0 || strcmp(mode, "rb+")==0 || strcmp(mode, "r")==0){
+    if(bTree->file != NULL && (strcmp(mode, "rb")==0 || strcmp(mode, "rb+")==0 || strcmp(mode, "r")==0)){
         inicializaHeaderBTree(bTree);
     }
     
@@ -356,7 +355,7 @@ void split(data_index *newKey, int newP, PAGE * pag, data_index *promoKey, int *
 void driver(char *btreeFile, data_index** arr, int nroReg){
     // Open or create the B-tree file
     file_object_btree *bTree = criarArquivoBinBtree(btreeFile, "rb+");
-    if (bTree == NULL) {
+    if (bTree->file == NULL) {
         // File doesn't exist, create a new B-tree file
         bTree = criarArquivoBinBtree(btreeFile, "wb+");
         bTree->header->status = '0';
@@ -373,30 +372,6 @@ void driver(char *btreeFile, data_index** arr, int nroReg){
     int ROOT = bTree->header->noRaiz; // get RRN of root
 
     int num = nroReg;
-//  num = 15;
-//  int test[num];
-//  int first[num];
-//  for (int i = 0; i < num; i++) {
-//      test[i] = getIndiceId(arr[i]);
-//      first[i] = test[i];
-//  }
-
-//  for (int i = 0; i < num; i++) {
-//      for (int j = 0; j < num-i-1; j++) {
-//          if (test[j] > test[j+1]) {
-//              int aux = test[j+1];
-//              test[j+1] = test[j];
-//              test[j] = aux;
-//          }
-//      }
-//  }
-//  for (int i = 0; i < num; i++) {
-//      for (int j = 0; j < num; j++) {
-//          if (test[j] == first[i]) {
-//              printf("id: %d -> j: %d\n", first[i], j);
-//          }
-//      }
-//  }
     for(int i = 0; i < num; i++){ // Continue while there are keys to insert
         data_index * KEY = arr[i];// Initialize with the first key value to insert
 

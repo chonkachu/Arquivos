@@ -5,12 +5,14 @@
 #include <string.h>
 #include "db.h"
 #include "file_utils.h"
+#include "btree.h"
 
 typedef struct pair_ {
     int32_t tamReg;
     int64_t byteOff;
 } pair;
 
+// condiçaod e ordenaçoa dos removidos
 int comparaPair(const void* a, const void* b) {
     pair aa = *(pair*) a;
     pair bb = *(pair*) b;
@@ -19,6 +21,7 @@ int comparaPair(const void* a, const void* b) {
     if (aa.tamReg < bb.tamReg) return -1;
     return 0;
 }
+
 int create_table(char* csv_name, char* bin_name){            // funçao que transforma o arquivo csv em binario (operação 1)
     FILE* csv_file = fopen(csv_name, "r");            // abre o arquivo csv
     for (char c = getc(csv_file); c != '\n'; c = getc(csv_file));
@@ -146,28 +149,28 @@ int create_table(char* csv_name, char* bin_name){            // funçao que tran
 
 void create_index(char* bin_name, char* index_bin_name){
     file_object *bin = criarArquivoBin(bin_name, "rb");
-    data_index **arr = criarVetorIndice(30113);
+    data_index **arr = criarVetorIndice(30113);  // cria vetor que armazena byteOffset e id do registro
     
     if (!verificaConsistencia(bin)) 
         return;
     inicioRegistroDeDados(bin);
     int i = 0;
     int64_t byteOff = 25;
-    while (1) {
+    while (1) { // iniciamos a percorre o arquivo binario
         gotoByteOffArquivoBin(bin, byteOff);
         data_registry *registro = criarRegistro();
-        int res = processaRegistro(bin, registro);
+        int res = processaRegistro(bin, registro);  // processamos registro
         if (res == -1) {
-            liberarRegistro(&registro);
+            liberarRegistro(&registro);  // chegamos em EOF daremos break;
             break;
         }         
         if (res == 0) {
-            byteOff += getTamRegistro(registro);
+            byteOff += getTamRegistro(registro); // o registro esta logicamente removido pula-se
             liberarRegistro(&registro);
             continue;
         }
         setIndiceByteOff(arr[i], byteOff);
-        setIndiceId(arr[i], getIdRegistro(registro));
+        setIndiceId(arr[i], getIdRegistro(registro)); // setamos o registro do indice
         byteOff += getTamRegistro(registro);
         liberarRegistro(&registro);
         i++;
@@ -175,19 +178,19 @@ void create_index(char* bin_name, char* index_bin_name){
 
     fecharArquivoBin(&bin);
 
-    qsort(arr, 30113, sizeof(data_index*), comparaIndice);
+    qsort(arr, 30113, sizeof(data_index*), comparaIndice); // chamamos  aordenação por id
 
-    file_object_ind* fileObj = criarArquivoBinInd(index_bin_name);            // cria o arquivo bin
+    file_object_ind* fileObj = criarArquivoBinInd(index_bin_name);            // cria o arquivo binario do indice
     setHeaderStatusInd(fileObj, '1');
     writeRegistroCabecalhoInd(fileObj);
-    writeRegistroDadosInd(fileObj, arr, i);
-    fecharArquivoBinInd(&fileObj);
+    writeRegistroDadosInd(fileObj, arr, i); 
+    // intuitivo pelo menos das funçoes que escrevemos no arquivo de indice.
+    fecharArquivoBinInd(&fileObj); // finalizamos 
     binarioNaTela(index_bin_name);
 }
 
-void select_from(char* bin_name){  
-    file_object *bin = criarArquivoBin(bin_name, "rb");          // função que imprime os registros do arquivo binario na forma pedida (operação 2)
-    //FILE *bin = fopen(bin_name, "rb");             // abre o arquivo binario
+void select_from(char* bin_name){  // função que imprime os registros do arquivo binario na forma pedida (operação 2)
+    file_object *bin = criarArquivoBin(bin_name, "rb");           // abre o arquivo binario
     
     if(!verificaConsistencia(bin)) return;
 
@@ -195,16 +198,16 @@ void select_from(char* bin_name){
 
     int EXIST=0;            // variavel para auxiliar em caso de registro inexistente
 
-    player_data *player = criarPlayer();
+    player_data *player = criarPlayer(); // estrutura de dados ue armazena os dados de um jogador
 
-    while(1){
-        int r = processaRegistroPlayer(bin, player);
-        if(r==-1) break;
+    while(1){ // precoreemos o arquivo
+        int r = processaRegistroPlayer(bin, player); // processamos o registro atual e configuramos o player
+        if(r==-1) break; // EOF atingido
         
         if(r==1){
-            imprimePlayerData(player);
-        liberaPlayer(player);
-        EXIST = 1;
+            imprimePlayerData(player); // o registro esta ok entao o imprimos
+            liberaPlayer(player);
+            EXIST = 1; // existe algum registro
         }
     }
 
@@ -221,8 +224,9 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
 
 
         for(int i=0;i<num_queries;i++){
-            parametros[i] = lerPlayerData(SELECT);
-        }           // Fim da computação da entrada
+            parametros[i] = lerPlayerData(SELECT);  // os parametros serao montados como se fossem players
+        }           
+        // Fim da computação da entrada
 
         // inicio da operação
         file_object *bin = criarArquivoBin(bin_name, "rb");
@@ -241,6 +245,7 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
                 if(r==-1) break;
         
                 if(r==1){ 
+                    // a diferença é que aqui precisamos saber se o player esta de acordo com os parametros
                if(comparaPlayer(player, parametros[i])){
                     EXIST=1;
                     imprimePlayerData(player);
@@ -257,9 +262,9 @@ void select_from_where(char *bin_name, int num_queries){        // função que 
         fecharArquivoBin(&bin);
 }       
 
-void delete_from_where(char *bin_name, char *index_bin_name, int n)
+void delete_from_where(char *bin_name, char *index_bin_name, int n) // função que deleta os registros que atendem as condiçoes pedidas
 {
-    player_data * parametros[1024];        // vetor que ira armazenar as especificaçoes de cada busca para lermos primeiro a entrada e somente depois imprimir
+    player_data * parametros[1024];  // dessa vez sera usado para organizar os parametros para deletar
 
     for (int i = 0; i < n; i++)
     {
@@ -267,7 +272,7 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
     } // Fim da computação da entrada
 
     // inicio da operação
-    pair arr[10002];
+    pair arr[10002]; // estrutura auxiliar para armazenar tamanho do registro e byteoff que iram auxiliar na montagem da lista ordenada
     int tamfila=0;
     file_object *bin = criarArquivoBin(bin_name, "rb+");
     if (!verificaConsistencia(bin)) return;
@@ -289,6 +294,7 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
         fread(&next, 8, 1, getFile(bin));
     }
 
+    // auxiliara para finalizar a quantidade de registros que tem e a quantidade de removidos
     int tinhaArquivos = getNroRegArq(bin);
     int  arquivosRemovidos= getNroRegRem(bin);
 
@@ -297,29 +303,30 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
 
         inicioRegistroDeDados(bin);
         int64_t jump = -1;
-        if (idbuscado(parametros[i]) != -1)
+        if (idbuscado(parametros[i]) != -1) // se possui id na busca usaremos busca binaria com o arquivo de indice
         {
-            jump = indBB(idbuscado(parametros[i]), index_bin_name, tinhaArquivos); // nao fiz a funçao nem defini ainda
-            if(jump==-2){
+            jump = indBB(idbuscado(parametros[i]), index_bin_name, tinhaArquivos); // 
+            if(jump==-2){ // o arquivo de indice esta inconsistente fim-se
                 return;
             }
         }
-        if (jump != -1) {
+        if (jump != -1) { // encontrado o id
             fseek(getFile(bin), jump, SEEK_SET);
             player_data * player=criarPlayer();
             processaRegistroPlayer(bin, player);
-            if (comparaPlayer(player, parametros[i]))
+            if (comparaPlayer(player, parametros[i])) // mesmo que tenha o id encontrado eh necessario saber se ele esta de acordo com os outros parametros
             {
                 //imprimePlayerData(player);
                 fseek(getFile(bin), jump, SEEK_SET);
-                char removidological='1';
-                fwrite(&removidological, 1, 1, getFile(bin));
+                char removidological='1';           
+                fwrite(&removidological, 1, 1, getFile(bin));       // escrevos que ja esta removido logicamente para nao atrapalhar nas outras deleçoes
+                // adicionamos na fila de removidos
                 fread(&arr[tamfila].tamReg, 4, 1, getFile(bin));
-                arr[tamfila].byteOff=jump;
+                arr[tamfila].byteOff=jump; 
                 tamfila++;
             }
         }
-        else {
+        else { // se nao teremos que percorrer o arquivo inteiro e logicamente remover todos os necssarios
             while (1)
             { // COMEÇAMOS A LER O ARQUIVO BINARIO
                 int64_t byteOff = ftell(getFile(bin));
@@ -335,6 +342,7 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
                     fseek(getFile(bin), byteOff, SEEK_SET);
                     char removidological='1';
                     fwrite(&removidological, 1, 1, getFile(bin));
+                    // adicionamos na fila de removidos
                     int tamReg = 0;
                     fread(&tamReg, 4, 1, getFile(bin));
                     arr[tamfila].tamReg = tamReg;
@@ -346,44 +354,48 @@ void delete_from_where(char *bin_name, char *index_bin_name, int n)
         }
     }
 
-    int novosRemovidos = tamfila - arquivosRemovidos; // qtd de novos caras que foram removidos
+    int novosRemovidos = tamfila - arquivosRemovidos; // quantidade de novos caras que foram removidos
 
-    qsort(arr, tamfila, sizeof(pair), comparaPair);
+    qsort(arr, tamfila, sizeof(pair), comparaPair); // ordena por tamanho do registro
 
     setHeaderStatus(bin, '1'); 
     int auxiliar = tinhaArquivos-novosRemovidos;
     setHeaderNroRegArq(bin, auxiliar);
     setHeaderNroRegRem(bin, tamfila);
 
-    writeRegistroCabecalho(bin);
+    writeRegistroCabecalho(bin); 
 
     fseek(getFile(bin), 1, SEEK_SET); // vamos comecar do campo topo do cabecalho
+    // começamos a processar a fila para montar a lista ordenada corretamente
     for(int i = 0; i < tamfila; i++){
         int64_t nowByte = arr[i].byteOff;
         fwrite(&nowByte, 8, 1, getFile(bin));
         fseek(getFile(bin), nowByte+5, SEEK_SET); // dou fseek pro campo de offset do proximo elemento da fila e somo tamReg + status
     }
 
+    // falta escrevos que o prox eh -1 no ultimo da fila
     int64_t menos1=-1;
     fwrite(&menos1, 8, 1, getFile(bin));
+
     fecharArquivoBin(&bin);
 
     binarioNaTela(bin_name);
-    create_index(bin_name, index_bin_name);
+    create_index(bin_name, index_bin_name); // criamos o norvo arquivo de indice
 }
 
-void insert_into(char* bin_name, char* index_bin_name, int n){
-    player_data* parametros[1024]; // vetor que ira armazenar as especificaçoes de cada busca para lermos primeiro a entrada e somente depois imprimir
-    data_registry *registros[1024];
+void insert_into(char* bin_name, char* index_bin_name, int n){ // operação que insere
+    player_data * parametros = criarPlayer(); // auxilia na criaçao de registro 
+    data_registry *registros[1024]; // iremos adicionar registros inves de jogadores
     int tamRegistros[1024];
 
     for (int i = 0; i < n; i++) {
-        parametros[i] = lerPlayerData(INSERT);
-        registros[i] = criarRegistroFromPlayer(parametros[i]);
+        parametros = lerPlayerData(INSERT); 
+        registros[i] = criarRegistroFromPlayer(parametros); // criamos um registro a partir de player
         tamRegistros[i] = getTamRegistro(registros[i]);
-        liberaPlayer(parametros[i]);
-        free(parametros[i]);
     }
+
+    liberaPlayer(parametros);
+    free(parametros);
 
     file_object *bin = criarArquivoBin(bin_name, "rb+");
     if (!verificaConsistencia(bin))
@@ -395,7 +407,7 @@ void insert_into(char* bin_name, char* index_bin_name, int n){
 
     setHeaderStatus(bin, '0'); // vamos operar no arquivo agr
 
-    if (topo == -1) {
+    if (topo == -1) { // se nao tem nada removido adicionaremos no fim
         fimRegistroDeDados(bin);
         for (int i = 0; i < n; i++) {
             writeRegistroDados(bin, registros[i]);
@@ -403,7 +415,7 @@ void insert_into(char* bin_name, char* index_bin_name, int n){
             liberarRegistro(&registros[i]);
         }
     }
-    else {
+    else { // se nao percorreremos a lista
         for (int i = 0; i < n; i++) {
             inicializaHeader(bin);
             byteOff = getTopo(bin);
@@ -413,18 +425,19 @@ void insert_into(char* bin_name, char* index_bin_name, int n){
                 gotoByteOffArquivoBin(bin, byteOff); // vamos para o proximo cara na lista de removidos
                 data_registry *removido = processaRegistroRemovido(bin, byteOff);
                 int tamReg = getTamRegistro(removido);
-                if (tamRegistros[i] <= tamReg) {
+                if (tamRegistros[i] <= tamReg) { // se da pra inserir escrevemos o registro
                     setTamanhoRegistro(registros[i], tamReg);
                     writeRegistroDados(bin, registros[i]);
 
-                    for (int k = 0; k < tamReg - tamRegistros[i]; k++) {
+                    for (int k = 0; k < tamReg - tamRegistros[i]; k++) { // preecnchemos com $$$  o que sobrou do anterior
                         char dollar = '$';
                         fwrite(&dollar, 1, 1, getFile(bin));
                     }
                     gotoByteOffArquivoBin(bin, last);
                     int64_t next = getProx(removido);
+                    // fazemos os ajustes para onde o anterior ira apontar agora que o next de onde eu adicionei
                     fwrite(&next, 8, 1, getFile(bin));
-                    if (last == 1) {
+                    if (last == 1) { // caso haja mudança no topo
                         setHeaderTopo(bin, next);
                         writeRegistroCabecalho(bin);
                     }
@@ -457,4 +470,266 @@ void insert_into(char* bin_name, char* index_bin_name, int n){
 
     binarioNaTela(bin_name);
     create_index(bin_name, index_bin_name);
+}
+
+void create_index_btree(char * bin_name, char * index_bin_name){
+    file_object *bin = criarArquivoBin(bin_name, "rb");
+    data_index **arr = criarVetorIndice(30113);  // cria vetor que armazena byteOffset e id do registro
+    
+    if (!verificaConsistencia(bin)) 
+        return;
+    inicioRegistroDeDados(bin);
+    int i = 0;
+    int64_t byteOff = 25;
+    while (1) { // iniciamos a percorre o arquivo binario
+        gotoByteOffArquivoBin(bin, byteOff);
+        data_registry *registro = criarRegistro();
+        int res = processaRegistro(bin, registro);  // processamos registro
+        if (res == -1) {
+            liberarRegistro(&registro);  // chegamos em EOF daremos break;
+            break;
+        }         
+        if (res == 0) {
+            byteOff += getTamRegistro(registro); // o registro esta logicamente removido pula-se
+            liberarRegistro(&registro);
+            continue;
+        }
+        setIndiceByteOff(arr[i], byteOff);
+        setIndiceId(arr[i], getIdRegistro(registro)); // setamos o registro do indice
+        byteOff += getTamRegistro(registro);
+        liberarRegistro(&registro);
+        i++;
+    }
+
+    fecharArquivoBin(&bin);
+
+    // chamamos a driver para inserir cada registro de dados na btree
+    driver(index_bin_name, arr, i);
+    
+    binarioNaTela(index_bin_name);
+}
+    
+void select_from_id(char * bin_name, char * index_bin_name, int num_queries){
+    file_object_btree * bTree = criarArquivoBinBtree(index_bin_name, "rb");
+    file_object * bin = criarArquivoBin(bin_name, "rb");
+
+    if (!verificaConsistenciaBTree(bTree)) 
+        return;
+    if (!verificaConsistencia(bin)) 
+        return;
+
+    int raizRRN=getRaizRRN(bTree);
+
+    for(int i=0;i<num_queries;i++){
+        int fRRN=0;
+        int fPOS=0;
+
+        char busca[3]; int id;
+
+        scanf("%s %d", busca, &id);
+
+        int maybeByteOff=search(raizRRN, id, &fRRN, &fPOS, bTree);
+
+        printf("BUSCA %d\n\n", i+1);
+
+        if(maybeByteOff==-1){
+            printf("Registro inexistente.\n\n");
+        }else{
+            fseek(getFile(bin), maybeByteOff, SEEK_SET);
+            player_data * player=criarPlayer();
+            processaRegistroPlayer(bin, player);
+            imprimePlayerData(player);
+        }
+    }
+
+    fecharArquivoBin(&bin);
+    fecharArquivoBinBTree(&bTree);
+}
+
+void select_from_where_btree(char * bin_name, char * index_bin_name, int num_queries){
+    file_object_btree * bTree = criarArquivoBinBtree(index_bin_name, "rb");
+
+    file_object * bin = criarArquivoBin(bin_name, "rb");
+
+    player_data * parametros[1024]; 
+
+    for (int i = 0; i < num_queries; i++)
+    {
+        parametros[i] = lerPlayerData(SELECT);
+    } // Fim da computação da entrada
+
+    if (!verificaConsistenciaBTree(bTree)) 
+        return;
+    if (!verificaConsistencia(bin)) 
+        return;
+
+    int raizRRN=getRaizRRN(bTree);
+    
+
+    for (int i = 0; i < num_queries; i++)
+    { // LOOP DAS BUSCAS
+
+        inicioRegistroDeDados(bin);
+        
+        if (idbuscado(parametros[i]) != -1){ // se possui id na busca usaremos busca binaria com o indice da btree
+            int fRRN=0;
+            int fPOS=0;
+
+            int maybeByteOff=search(raizRRN, idbuscado(parametros[i]), &fRRN, &fPOS, bTree);
+
+            printf("Busca %d\n\n", i+1);
+
+            if(maybeByteOff==-1){
+                printf("Registro inexistente.\n\n");
+            }else{
+                fseek(getFile(bin), maybeByteOff, SEEK_SET);
+                player_data * player=criarPlayer();
+                processaRegistroPlayer(bin, player);
+                if(comparaPlayer(player, parametros[i])){
+                    imprimePlayerData(player);
+                }else{
+                    printf("Registro inexistente receba.\n\n");
+                }
+            }
+
+        }else { // se nao teremos que percorrer o arquivo inteiro
+            int EXIST=0;            // variavel que auxilia em caso de registro inexistente
+            inicioRegistroDeDados(bin); 
+
+            printf("Busca %d\n\n", i+1);            
+
+            player_data* player = criarPlayer();
+        
+            while(1){
+                 int r = processaRegistroPlayer(bin, player);
+                if(r==-1) break;
+        
+                if(r==1){ 
+                    // a diferença é que aqui precisamos saber se o player esta de acordo com os parametros
+               if(comparaPlayer(player, parametros[i])){
+                    EXIST=1;
+                    imprimePlayerData(player);
+                 }
+                }
+                liberaPlayer(player);       
+            }
+               
+
+            if(!EXIST){
+                printf("Registro inexistente.\n\n");
+            }
+        }
+    }
+
+    fecharArquivoBin(&bin);
+    fecharArquivoBinBTree(&bTree);
+}
+    
+void insert_into_btree(char * bin_name, char * index_bin_name, int n){
+    file_object_btree * bTree = criarArquivoBinBtree(index_bin_name, "rb");
+    player_data * parametros = criarPlayer(); // auxilia na criaçao de registro 
+    data_registry *registros[1024]; // iremos adicionar registros inves de jogadores
+    int tamRegistros[1024];
+
+    for (int i = 0; i < n; i++) {
+        parametros = lerPlayerData(INSERT); 
+        registros[i] = criarRegistroFromPlayer(parametros); // criamos um registro a partir de player
+        tamRegistros[i] = getTamRegistro(registros[i]);
+    }
+
+    liberaPlayer(parametros);
+    free(parametros);
+
+    file_object *bin = criarArquivoBin(bin_name, "rb+");
+    if (!verificaConsistencia(bin))
+        return;
+    if (!verificaConsistenciaBTree(bTree))
+        return;
+    data_index **arr = criarVetorIndice(30113);  // cria vetor que armazena byteOffset e id do registro
+    int tam=0;
+
+    int64_t topo = getTopo(bin), byteOff = 0;
+    int numRegistros = getNroRegArq(bin);
+    int numRemovidos = getNroRegRem(bin);
+
+    setHeaderStatus(bin, '0'); // vamos operar no arquivo agr
+    writeRegistroCabecalho(bin);
+
+    if (topo == -1) { // se nao tem nada removido adicionaremos no fim
+        fimRegistroDeDados(bin);
+        for (int i = 0; i < n; i++) {
+            byteOff=ftell(getFile(bin));
+            writeRegistroDados(bin, registros[i]);
+            numRegistros++;
+
+            setIndiceId(arr[tam], getIdRegistro(registros[i]));
+            setIndiceByteOff(arr[tam], byteOff);
+            tam++;
+
+            liberarRegistro(&registros[i]);
+        }
+    }
+    else { // se nao percorreremos a lista
+        for (int i = 0; i < n; i++) {
+            inicializaHeader(bin);
+            byteOff = getTopo(bin);
+            int64_t last = 1;
+            int flag = 0; // se conseguimos inserir num campo logicamente removido ou n
+            while (byteOff != -1) {
+                gotoByteOffArquivoBin(bin, byteOff); // vamos para o proximo cara na lista de removidos
+                data_registry *removido = processaRegistroRemovido(bin, byteOff);
+                int tamReg = getTamRegistro(removido);
+                if (tamRegistros[i] <= tamReg) { // se da pra inserir escrevemos o registro
+                    setTamanhoRegistro(registros[i], tamReg);
+                    writeRegistroDados(bin, registros[i]);
+
+                    for (int k = 0; k < tamReg - tamRegistros[i]; k++) { // preecnchemos com $$$  o que sobrou do anterior
+                        char dollar = '$';
+                        fwrite(&dollar, 1, 1, getFile(bin));
+                    }
+                    gotoByteOffArquivoBin(bin, last);
+                    int64_t next = getProx(removido);
+                    // fazemos os ajustes para onde o anterior ira apontar agora que o next de onde eu adicionei
+                    fwrite(&next, 8, 1, getFile(bin));
+                    if (last == 1) { // caso haja mudança no topo
+                        setHeaderTopo(bin, next);
+                        writeRegistroCabecalho(bin);
+                    }
+                    numRemovidos--;
+                    flag = 1;
+                    liberarRegistro(&removido);
+                    break;
+                }
+                else {
+                    last = byteOff+5; // vai pra exatamente o byteoffset do campo de prox do registro removido anterior
+                    byteOff = getProx(removido);
+                    liberarRegistro(&removido);
+                }
+            }
+            if (!flag) { // se nao achou lugar pra colocar, insere no final
+                fimRegistroDeDados(bin);
+                byteOff=ftell(getFile(bin));
+                writeRegistroDados(bin, registros[i]);
+            } 
+            numRegistros++;
+
+            setIndiceId(arr[tam], getIdRegistro(registros[i]));
+            setIndiceByteOff(arr[tam], byteOff);
+            tam++;
+
+            liberarRegistro(&registros[i]);
+        }
+    }
+    int64_t fimDoArq = tamanhoBin(bin);
+    setHeaderProxByteOffset(bin, fimDoArq);
+    setHeaderStatus(bin, '1');
+    setHeaderNroRegArq(bin, numRegistros);
+    setHeaderNroRegRem(bin, numRemovidos);
+    writeRegistroCabecalho(bin);
+    fecharArquivoBin(&bin);
+
+    driver(index_bin_name, arr, tam);
+
+    binarioNaTela(bin_name);
+    binarioNaTela(index_bin_name);
 }

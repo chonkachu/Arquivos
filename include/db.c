@@ -473,7 +473,7 @@ void insert_into(char* bin_name, char* index_bin_name, int n){ // operação que
 }
 
 void create_index_btree(char * bin_name, char * index_bin_name){
-    file_object *bin = criarArquivoBin(bin_name, "r");
+    file_object *bin = criarArquivoBin(bin_name, "rb");
     data_index **arr = criarVetorIndice(30113);  // cria vetor que armazena byteOffset e id do registro
     
     if (!verificaConsistencia(bin)) 
@@ -510,8 +510,8 @@ void create_index_btree(char * bin_name, char * index_bin_name){
 }
     
 void select_from_id(char * bin_name, char * index_bin_name, int num_queries){
-    file_object_btree * bTree = criarArquivoBinBtree(index_bin_name, "r");
-    file_object * bin = criarArquivoBin(bin_name, "r");
+    file_object_btree * bTree = criarArquivoBinBtree(index_bin_name, "rb");
+    file_object * bin = criarArquivoBin(bin_name, "rb");
 
     if (!verificaConsistenciaBTree(bTree)) 
         return;
@@ -547,8 +547,9 @@ void select_from_id(char * bin_name, char * index_bin_name, int num_queries){
 }
 
 void select_from_where_btree(char * bin_name, char * index_bin_name, int num_queries){
-    file_object_btree * bTree = criarArquivoBinBtree(index_bin_name, "r");
-    file_object * bin = criarArquivoBin(bin_name, "r");
+    file_object_btree * bTree = criarArquivoBinBtree(index_bin_name, "rb");
+
+    file_object * bin = criarArquivoBin(bin_name, "rb");
 
     player_data * parametros[1024]; 
 
@@ -625,6 +626,7 @@ void select_from_where_btree(char * bin_name, char * index_bin_name, int num_que
 }
     
 void insert_into_btree(char * bin_name, char * index_bin_name, int n){
+    file_object_btree * bTree = criarArquivoBinBtree(index_bin_name, "rb");
     player_data * parametros = criarPlayer(); // auxilia na criaçao de registro 
     data_registry *registros[1024]; // iremos adicionar registros inves de jogadores
     int tamRegistros[1024];
@@ -641,7 +643,8 @@ void insert_into_btree(char * bin_name, char * index_bin_name, int n){
     file_object *bin = criarArquivoBin(bin_name, "rb+");
     if (!verificaConsistencia(bin))
         return;
-
+    if (!verificaConsistenciaBTree(bTree))
+        return;
     data_index **arr = criarVetorIndice(30113);  // cria vetor que armazena byteOffset e id do registro
     int tam=0;
 
@@ -650,6 +653,7 @@ void insert_into_btree(char * bin_name, char * index_bin_name, int n){
     int numRemovidos = getNroRegRem(bin);
 
     setHeaderStatus(bin, '0'); // vamos operar no arquivo agr
+    writeRegistroCabecalho(bin);
 
     if (topo == -1) { // se nao tem nada removido adicionaremos no fim
         fimRegistroDeDados(bin);

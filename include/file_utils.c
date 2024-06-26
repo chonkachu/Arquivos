@@ -61,7 +61,7 @@ file_object* criarArquivoBin(char *bin_name, char *mode){
     fileObj->header = header;
     FILE* bin = fopen(bin_name, mode);
     fileObj->file = bin;
-    if(strcmp(mode, "rb")==0 || strcmp(mode, "rb+")==0){
+    if(fileObj->file != NULL && (strcmp(mode, "rb")==0 || strcmp(mode, "rb+")==0)){
         inicializaHeader(fileObj);
     }
     fileObj->fileIndex = 0;
