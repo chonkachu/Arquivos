@@ -654,8 +654,14 @@ void insert_into_btree(char * bin_name, char * index_bin_name, int n){
     if (topo == -1) { // se nao tem nada removido adicionaremos no fim
         fimRegistroDeDados(bin);
         for (int i = 0; i < n; i++) {
+            byteOff=ftell(getFile(bin));
             writeRegistroDados(bin, registros[i]);
             numRegistros++;
+
+            setIndiceId(arr[tam], getIdRegistro(registros[i]));
+            setIndiceByteOff(arr[tam], byteOff);
+            tam++;
+
             liberarRegistro(&registros[i]);
         }
     }
