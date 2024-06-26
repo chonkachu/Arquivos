@@ -85,7 +85,9 @@ void lerPagina(int rrn, PAGE *page, file_object_btree *bTree) {
         fread(&page->c[i], sizeof(int), 1, bTree->file);
         fread(&page->pr[i], sizeof(int64_t), 1, bTree->file);
     }
-    fread(page->p, sizeof(int), 4, bTree->file);
+     for (int i = 0; i < 4; i++) {
+        fread(&page->p[i], sizeof(int), 1, bTree->file);
+    }
 }
 
 void fecharArquivoBinBTree(file_object_btree** bTree){
@@ -110,13 +112,13 @@ int verificaConsistenciaBTree(file_object_btree *bTree){
 void inicializaHeaderBTree(file_object_btree *bTree) {
     fseek(bTree->file, 0, SEEK_SET);
     fread(&(bTree->header->status), 1, 1, bTree->file);
-    fread(&(bTree->header->noRaiz), 1, 1, bTree->file);
+    fread(&(bTree->header->noRaiz), 4, 1, bTree->file);
     fread(&(bTree->header->proxRRN), 4, 1, bTree->file);
     fread(&(bTree->header->nroChaves), 4, 1, bTree->file);
 }
 
 void escreverHeaderBTree(file_object_btree *bTree) {
-    printf("header: %c %d %d %d\n", bTree->header->status, bTree->header->noRaiz, bTree->header->proxRRN, bTree->header->nroChaves);
+  //  printf("header: %c %d %d %d\n", bTree->header->status, bTree->header->noRaiz, bTree->header->proxRRN, bTree->header->nroChaves);
     fseek(bTree->file, 0, SEEK_SET);
     fwrite(&(bTree->header->status), 1, 1, bTree->file);
     fwrite(&(bTree->header->noRaiz), 4, 1, bTree->file);
@@ -139,7 +141,7 @@ file_object_btree * criarArquivoBinBtree(char *bin_name, char *mode){
     FILE* bin = fopen(bin_name, mode);
     if (bin == NULL) return NULL; // nao conseguiu abrir
     bTree->file = bin;
-    if(strcmp(mode, "rb")==0 || strcmp(mode, "rb+")==0){
+    if(strcmp(mode, "rb")==0 || strcmp(mode, "rb+")==0 || strcmp(mode, "r")==0){
         inicializaHeaderBTree(bTree);
     }
     
@@ -189,7 +191,7 @@ void insereDadoPage(PAGE *page, data_index *data, int newP) {
 
 void jumpToRRN(file_object_btree * bTree, int RRN){
     fseek(bTree->file, 60+RRN*60, SEEK_SET);
-    printf("dando seek para %ld\n", ftell(bTree->file));
+   // printf("dando seek para %ld\n", ftell(bTree->file));
 }
 
 void escrevePaginaNaBTree(file_object_btree * bTree, PAGE * pag){
@@ -205,16 +207,16 @@ void escrevePaginaNaBTree(file_object_btree * bTree, PAGE * pag){
 }
 
 void escreveRegistroBtree(PAGE * pag, int RRN, file_object_btree * bTree){
-    printf("escrevendo page\n");
-    printf("RRN: %d\n", RRN);
-    printf("altura: %d\n",pag->alturaNo);
-    printf("nroChaves: %d\n", pag->nroChaves);
-    for (int i = 0; i < 3; i++) printf("c[%d]: %d ", i, pag->c[i]);
-    printf("\n");
-    for (int i = 0; i < 3; i++) printf("pr[%d]: %ld ", i, pag->pr[i]);
-    printf("\n");
-    for (int i = 0; i < 4; i++) printf("p[%d]: %d ", i, pag->p[i]);
-    printf("\n");
+   // printf("escrevendo page\n");
+ //   printf("RRN: %d\n", RRN);
+   // printf("altura: %d\n",pag->alturaNo);
+  //  printf("nroChaves: %d\n", pag->nroChaves);
+   // for (int i = 0; i < 3; i++) printf("c[%d]: %d ", i, pag->c[i]);
+   // printf("\n");
+   // for (int i = 0; i < 3; i++) printf("pr[%d]: %ld ", i, pag->pr[i]);
+    //printf("\n");
+   // for (int i = 0; i < 4; i++) printf("p[%d]: %d ", i, pag->p[i]);
+   // printf("\n");
 
     jumpToRRN(bTree, RRN);
     escrevePaginaNaBTree(bTree, pag);
@@ -222,7 +224,7 @@ void escreveRegistroBtree(PAGE * pag, int RRN, file_object_btree * bTree){
 
 int insert(int rrnAtual, data_index *data, int * promoRchild,  data_index* promoKey, file_object_btree * bTree, int* altura){
     if(rrnAtual==-1){
-        printf("estou setando uma folha para promover agora\n");
+      //  printf("estou setando uma folha para promover agora\n");
         setIndiceId(promoKey, getIndiceId(data));
         setIndiceByteOff(promoKey, getByteOff(data));
         *promoRchild = -1;
@@ -232,7 +234,7 @@ int insert(int rrnAtual, data_index *data, int * promoRchild,  data_index* promo
         lerPagina(rrnAtual, page, bTree);
         int pos = searchKeyOnPage(page, data);
 
-        printf("estou em registro de RRN: %d, pos achado: %d\n", rrnAtual, pos);
+      //  printf("estou em registro de RRN: %d, pos achado: %d\n", rrnAtual, pos);
         if(pos==-1){
             return ERRO;
         }
@@ -253,9 +255,9 @@ int insert(int rrnAtual, data_index *data, int * promoRchild,  data_index* promo
         else{
             PAGE * newPage = criarPagina();
             newPage->alturaNo = page->alturaNo;
-            printf("splitei em RRN: %d\n", rrnAtual);
+           // printf("splitei em RRN: %d\n", rrnAtual);
             split(pbKEY, pbRRN, page, promoKey, promoRchild, newPage, bTree);
-            printf("promoveu: %d\n",getIndiceId(promoKey));
+           // printf("promoveu: %d\n",getIndiceId(promoKey));
             escreveRegistroBtree(page, rrnAtual, bTree);
             escreveRegistroBtree(newPage,*promoRchild, bTree);
             if (altura != NULL) *altura = page->alturaNo+1;
@@ -401,7 +403,7 @@ void driver(char *btreeFile, data_index** arr, int nroReg){
         int PROMO_R_CHILD;
         data_index *PROMO_KEY = criarDataIndex(-1, -1);
         int alturaPag = 0;
-        printf("\nINSERT %d AGORA, inserindo: %d\n", i+1, getIndiceId(KEY));
+       // printf("\nINSERT %d AGORA, inserindo: %d\n", i+1, getIndiceId(KEY));
         bTree->header->nroChaves++;
         if (insert(ROOT, KEY, &PROMO_R_CHILD, PROMO_KEY, bTree, &alturaPag) == PROMOTION) {
             // Create a new root page with key := PROMO_KEY, left child := ROOT and right child := PROMO_R_CHILD
@@ -416,7 +418,7 @@ void driver(char *btreeFile, data_index** arr, int nroReg){
             // Set ROOT to RRN of the new root page
             ROOT = getAndIncrementaRRN(bTree);
             bTree->header->noRaiz = ROOT;
-            printf("nova raiz em RRN: %d\n", ROOT);
+            //printf("nova raiz em RRN: %d\n", ROOT);
 
             // Write the new root page to the file
             escreveRegistroBtree(newRootPage, ROOT, bTree);

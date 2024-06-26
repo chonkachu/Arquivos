@@ -473,7 +473,7 @@ void insert_into(char* bin_name, char* index_bin_name, int n){ // operação que
 }
 
 void create_index_btree(char * bin_name, char * index_bin_name){
-    file_object *bin = criarArquivoBin(bin_name, "rb");
+    file_object *bin = criarArquivoBin(bin_name, "r");
     data_index **arr = criarVetorIndice(30113);  // cria vetor que armazena byteOffset e id do registro
     
     if (!verificaConsistencia(bin)) 
@@ -524,9 +524,9 @@ void select_from_id(char * bin_name, char * index_bin_name, int num_queries){
         int fRRN=0;
         int fPOS=0;
 
-        int busca, id;
+        char busca[3]; int id;
 
-        scanf("%d %d", &busca, &id);
+        scanf("%s %d", busca, &id);
 
         int maybeByteOff=search(raizRRN, id, &fRRN, &fPOS, bTree);
 
@@ -550,17 +550,20 @@ void select_from_where_btree(char * bin_name, char * index_bin_name, int num_que
     file_object_btree * bTree = criarArquivoBinBtree(index_bin_name, "r");
     file_object * bin = criarArquivoBin(bin_name, "r");
 
-    player_data * parametros[1024];  // dessa vez sera usado para organizar os parametros para deletar
+    player_data * parametros[1024]; 
 
     for (int i = 0; i < num_queries; i++)
     {
-        parametros[i] = lerPlayerData(DELETE);
+        parametros[i] = lerPlayerData(SELECT);
     } // Fim da computação da entrada
 
     if (!verificaConsistenciaBTree(bTree)) 
         return;
     if (!verificaConsistencia(bin)) 
         return;
+
+    int raizRRN=getRaizRRN(bTree);
+    
 
     for (int i = 0; i < num_queries; i++)
     { // LOOP DAS BUSCAS
@@ -571,13 +574,9 @@ void select_from_where_btree(char * bin_name, char * index_bin_name, int num_que
             int fRRN=0;
             int fPOS=0;
 
-            int busca, id;
+            int maybeByteOff=search(raizRRN, idbuscado(parametros[i]), &fRRN, &fPOS, bTree);
 
-            scanf("%d %d", &busca, &id);
-
-            int maybeByteOff=search(getRaizRRN(bTree), id, &fRRN, &fPOS, bTree);
-
-            printf("Busca %d\n\n", busca);
+            printf("Busca %d\n\n", i+1);
 
             if(maybeByteOff==-1){
                 printf("Registro inexistente.\n\n");
@@ -588,7 +587,7 @@ void select_from_where_btree(char * bin_name, char * index_bin_name, int num_que
                 if(comparaPlayer(player, parametros[i])){
                     imprimePlayerData(player);
                 }else{
-                    printf("Registro inexistente.\n\n");
+                    printf("Registro inexistente receba.\n\n");
                 }
             }
 
