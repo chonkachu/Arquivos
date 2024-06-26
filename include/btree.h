@@ -36,7 +36,7 @@ int insert(int rrnAtual, data_index *data, int * promoRchild,  data_index* promo
 
 void insereOrdenadoOnWPage(WPAGE *wPag, data_index * data, int newP);
 
-data_index * getMiddle(WPAGE * wPag, int *promoRChild);
+data_index * getMiddle(WPAGE * wPag, int *promoRChild, file_object_btree *bTree);
 
 void split(data_index *newKey, int newP, PAGE * pag, data_index *promoKey, int *promoRChild, PAGE * newPag, file_object_btree *bTree);
 

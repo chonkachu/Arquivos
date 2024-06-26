@@ -566,7 +566,7 @@ void select_from_where_btree(char * bin_name, char * index_bin_name, int num_que
     { // LOOP DAS BUSCAS
 
         inicioRegistroDeDados(bin);
-        int64_t jump = -1;
+        
         if (idbuscado(parametros[i]) != -1){ // se possui id na busca usaremos busca binaria com o indice da btree
             int fRRN=0;
             int fPOS=0;
@@ -699,7 +699,7 @@ void insert_into_btree(char * bin_name, char * index_bin_name, int n){
             }
             if (!flag) { // se nao achou lugar pra colocar, insere no final
                 fimRegistroDeDados(bin);
-                byteOff=ftell(bin);
+                byteOff=ftell(getFile(bin));
                 writeRegistroDados(bin, registros[i]);
             } 
             numRegistros++;

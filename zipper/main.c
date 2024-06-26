@@ -40,7 +40,20 @@ int main() {
     }else if (op == 6) {    
         scanf(" %s %s %d", csv_name, bin_name, &num_queries);
         insert_into(csv_name, bin_name, num_queries);
+    }else if (op == 7) {    
+        scanf(" %s %s", csv_name, bin_name);
+        create_index_btree(csv_name, bin_name); 
+    }else if (op == 8) {    
+        scanf(" %s %s %d", csv_name, bin_name, &num_queries);
+        select_from_id(csv_name, bin_name, num_queries);
+    }else if (op == 9) {    
+        scanf(" %s %s %d", csv_name, bin_name, &num_queries);
+        select_from_where_btree(csv_name, bin_name, num_queries);
+    }else if (op == 10) {    
+        scanf(" %s %s %d", csv_name, bin_name, &num_queries);
+        insert_into_btree(csv_name, bin_name, num_queries);
     }
+    
     
 
     return 0;

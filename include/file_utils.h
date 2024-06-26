@@ -78,7 +78,7 @@ void setIndiceId(data_index* a, int32_t id);
 data_index** criarVetorIndice(int n);
 int32_t getIndiceId(data_index* a);
 int64_t getByteOff(data_index* a);
-data_index* criarDataIndex(int id, int byteOff);
+data_index* criarDataIndex(int id, int64_t byteOff);
 int64_t indBB(int id, char *bin_name, int nroRegArq);
 file_object_ind* criarArquivoBinInd(char *bin_name);
 void imprimePlayerData(player_data *player);

@@ -116,10 +116,10 @@ void inicializaHeaderBTree(file_object_btree *bTree) {
 
 void escreverHeaderBTree(file_object_btree *bTree) {
     jumpToRRN(bTree, 0);
-    fwrite(bTree->header->status, sizeof(char), 1, bTree->file);
-    fwrite((bTree->header->noRaiz), sizeof(int), 1, bTree->file);
-    fwrite((bTree->header->proxRRN), sizeof(int), 1, bTree->file);
-    fwrite((bTree->header->nroChaves), sizeof(int), 1, bTree->file);
+    fwrite(&(bTree->header->status), sizeof(char), 1, bTree->file);
+    fwrite(&(bTree->header->noRaiz), sizeof(int), 1, bTree->file);
+    fwrite(&(bTree->header->proxRRN), sizeof(int), 1, bTree->file);
+    fwrite(&(bTree->header->nroChaves), sizeof(int), 1, bTree->file);
 }
 
 int getRaizRRN(file_object_btree * bTree){
@@ -189,8 +189,8 @@ void jumpToRRN(file_object_btree * bTree, int RRN){
 }
 
 void escrevePaginaNaBTree(file_object_btree * bTree, PAGE * pag){
-    fwrite(pag->alturaNo, 4, 1, bTree->file);
-    fwrite(pag->nroChaves, 4, 1, bTree->file);
+    fwrite(&(pag->alturaNo), 4, 1, bTree->file);
+    fwrite(&(pag->nroChaves), 4, 1, bTree->file);
     fwrite(pag->c, 4, 3, bTree->file);
     fwrite(pag->pr, 8, 3, bTree->file);
     fwrite(pag->p, 4, 4, bTree->file);
@@ -210,13 +210,13 @@ int insert(int rrnAtual, data_index *data, int * promoRchild,  data_index* promo
     }else{
         PAGE * page = criarPagina();
         lerPagina(rrnAtual, page, bTree);
-        int pos = searchKeyOnPage(page, getIndiceId(data));
+        int pos = searchKeyOnPage(page, data);
 
         if(pos==-1){
             return ERRO;
         }
 
-        data_index *pbKEY;
+        data_index *pbKEY = criarDataIndex(-1, -1);
         int pbRRN;
 
         int retorno = insert(page->p[pos], data, &pbRRN, pbKEY, bTree, NULL);
@@ -266,7 +266,7 @@ void insereOrdenadoOnWPage(WPAGE *wPag, data_index * data, int newP) {
 
 data_index * getMiddle(WPAGE * wPag, int *promoRChild, file_object_btree *bTree){
     data_index * data = criarDataIndex(wPag->c[2], wPag->pr[2]);
-    promoRChild = getAndIncrementaRRN(bTree);
+    *promoRChild = getAndIncrementaRRN(bTree);
     return data;
 }
 
@@ -344,13 +344,14 @@ void driver(char *btreeFile, data_index** arr, int i){
         data_index * KEY = arr[i];// Initialize with the first key value to insert
 
         int PROMO_R_CHILD;
-        data_index *PROMO_KEY;
+        data_index *PROMO_KEY = criarDataIndex(-1, -1);
         int alturaPag = 0;
         if (insert(ROOT, KEY, &PROMO_R_CHILD, PROMO_KEY, bTree, &alturaPag) == PROMOTION) {
             // Create a new root page with key := PROMO_KEY, left child := ROOT and right child := PROMO_R_CHILD
             PAGE *newRootPage = criarPagina();
             newRootPage->alturaNo = alturaPag; // Height of the new root
-            newRootPage->c[0] = PROMO_KEY;
+            newRootPage->c[0] = getIndiceId(PROMO_KEY);
+            newRootPage->pr[0] = getByteOff(PROMO_KEY);
             newRootPage->p[0] = ROOT;
             newRootPage->p[1] = PROMO_R_CHILD;
             newRootPage->nroChaves = 1;
