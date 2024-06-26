@@ -530,7 +530,7 @@ void select_from_id(char * bin_name, char * index_bin_name, int num_queries){
 
         int maybeByteOff=search(raizRRN, id, &fRRN, &fPOS, bTree);
 
-        printf("Busca %d\n\n", busca);
+        printf("BUSCA %d\n\n", i+1);
 
         if(maybeByteOff==-1){
             printf("Registro inexistente.\n\n");
